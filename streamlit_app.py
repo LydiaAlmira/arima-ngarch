@@ -49,7 +49,7 @@ def load_data(uploaded_file=None, default_filename='data/default_currency.csv'):
                 return pd.DataFrame()
         else:
             st.warning(f"File default '{default_filename}' tidak ditemukan di {path}. Silakan unggah file.")
-            return pd.DataFrame()
+            return pd.DataFrame() # Ini yang seharusnya tetap di sini
 
 # --- Custom CSS untuk Tampilan (Ubah Warna dan Hilangkan Ikon +) ---
 st.markdown("""
@@ -227,7 +227,7 @@ elif st.session_state['current_page'] == 'input_data':
                 st.session_state['df_currency_raw'] = df_general # Simpan data mentah
         except Exception as e:
             st.error(f"Terjadi kesalahan saat membaca file yang diunggah: {e}")
-            return pd.DataFrame()
+            # Tidak ada return di sini, karena ini bukan fungsi
     elif 'df_currency_raw' not in st.session_state or st.session_state['df_currency_raw'].empty:
         st.info("Tidak ada file yang diunggah. Mencoba memuat data default 'data/default_currency.csv'.")
         df_general = load_data(uploaded_file=None, default_filename='data/default_currency.csv')
