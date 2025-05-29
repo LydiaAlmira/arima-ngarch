@@ -9,6 +9,8 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go # Menambahkan Plotly untuk visualisasi interaktif
 from plotly.subplots import make_subplots # Untuk subplots di Plotly
+pip install --upgrade statsmodels
+pip install --upgrade pandas numpy scikit-learn matplotlib plotly arch statsmodels
 
 # Impor model yang relevan
 from statsmodels.tsa.arima.model import ARIMA
