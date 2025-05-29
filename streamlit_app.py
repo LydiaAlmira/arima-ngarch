@@ -51,12 +51,12 @@ def load_data(uploaded_file=None, default_filename='data/default_currency.csv'):
             st.warning(f"File default '{default_filename}' tidak ditemukan di {path}. Silakan unggah file.")
             return pd.DataFrame()
 
-# --- Custom CSS untuk Tampilan (Ubah Warna) ---
+# --- Custom CSS untuk Tampilan (Ubah Warna dan Hilangkan Ikon +) ---
 st.markdown("""
     <style>
         /* Mengubah warna latar belakang sidebar */
         .css-1d3f8aq.e1fqkh3o1 {
-            background-color: #e6f2ff; /* Biru muda sangat pucat */
+            background-color: #f0f2f6; /* Abu-abu sangat terang */
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
@@ -71,45 +71,54 @@ st.markdown("""
         .stButton>button {
             width: 100%;
             border-radius: 0.5rem;
-            border: 1px solid #cce0ff; /* Border biru muda */
-            background-color: #f0f8ff; /* Biru sangat pucat */
+            border: 1px solid #d4d7dc; /* Border abu-abu muda */
+            background-color: #ffffff; /* Putih */
             color: #333;
             padding: 0.75rem 1rem;
             font-size: 1rem;
             text-align: left;
             margin-bottom: 0.2rem;
+            transition: background-color 0.3s, color 0.3s;
         }
         .stButton>button:hover {
-            background-color: #dbe9fc; /* Biru muda lebih gelap saat hover */
+            background-color: #e0e6ed; /* Abu-abu lebih gelap saat hover */
+            color: #1a1a1a;
         }
         .stButton>button:focus {
             outline: none;
-            box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.25); /* Biru Google */
+            box-shadow: 0 0 0 0.2rem rgba(90, 150, 250, 0.25); /* Biru sedikit gelap untuk fokus */
         }
         /* Styling untuk tombol aktif (klik) */
         .stButton>button:active {
-            background-color: #b0c2e6; /* Biru sedang saat aktif */
+            background-color: #a4c6f1; /* Biru sedang saat aktif */
         }
+        /* Styling untuk tombol navigasi sidebar yang sedang aktif */
         .stButton button[data-testid^="stSidebarNavButton"]:focus:not(:active) {
-            background-color: #cce0ff !important; /* Biru muda untuk yang aktif */
+            background-color: #dbe9fc !important; /* Biru muda pucat untuk yang aktif */
             font-weight: bold;
+            color: #0056b3; /* Biru gelap untuk teks aktif */
         }
+        
+        /* Header utama aplikasi */
         .main-header {
-            background-color: #4285F4; /* Biru Google yang khas */
+            background-color: #3f72af; /* Biru tua yang elegan */
             color: white;
             padding: 1.5rem;
             border-radius: 0.5rem;
             text-align: center;
             font-size: 1.8em;
             margin-bottom: 2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Sedikit bayangan untuk kesan mendalam */
         }
+        /* Sub-header bagian */
         .section-header {
             font-size: 1.5em;
             font-weight: bold;
             margin-top: 2rem;
             margin-bottom: 1rem;
-            color: #333; /* Warna teks gelap */
+            color: #2c3e50; /* Warna teks gelap (dark blue-grey) */
         }
+        /* Card informasi di halaman HOME */
         .info-card {
             background-color: #ffffff;
             border-radius: 0.5rem;
@@ -117,19 +126,32 @@ st.markdown("""
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 1.5rem;
             text-align: center;
+            border-left: 5px solid #3f72af; /* Garis biru tua di sisi kiri */
         }
+        /* Menghilangkan ikon '+' */
         .info-card .plus-icon {
-            font-size: 4em;
-            color: #4285F4; /* Icon berwarna biru */
-            margin-bottom: 0.5rem;
+            display: none; /* Menyembunyikan ikon + */
         }
+        /* Gaya teks interpretasi/saran */
         .interpretation-text {
             background-color: #f8f8f8;
-            border-left: 5px solid #4285F4;
+            border-left: 5px solid #3f72af; /* Biru tua */
             padding: 1.5rem;
             margin-top: 1rem;
             margin-bottom: 1rem;
             border-radius: 0.5rem;
+        }
+        /* Gaya untuk daftar panduan penggunaan */
+        .guidance-list ul {
+            list-style-type: disc; /* Menggunakan bullet point standar */
+            padding-left: 20px;
+        }
+        .guidance-list li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .guidance-list b {
+            color: #3f72af; /* Warna biru tua untuk teks bold */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -147,7 +169,7 @@ menu_items = {
     "PEMODELAN NGARCH": "pemodelan_ngarch",
     "PEMODELAN ARIMA-NGARCH": "pemodelan_arima_ngarch",
     "PREDIKSI": "prediksi",
-    "INTERPRETASI & SARAN": "interpretasi_saran", # Menu baru
+    "INTERPRETASI & SARAN": "interpretasi_saran",
 }
 
 if 'current_page' not in st.session_state:
@@ -162,15 +184,16 @@ for item, key in menu_items.items():
 if st.session_state['current_page'] == 'home':
     st.markdown('<div class="main-header">Prediksi Data Time Series Univariat <br> Menggunakan Model ARIMA-NGARCH</div>', unsafe_allow_html=True)
 
+    # Ikon '+' dihapus, hanya ada teks
     st.markdown("""
         <div class="info-card">
-            <div class="plus-icon">+</div>
             <p>Sistem ini dirancang untuk melakukan prediksi nilai tukar mata uang menggunakan model ARIMA dan mengukur volatilitasnya dengan model NGARCH.</p>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown('<h3 class="section-header">Panduan Penggunaan Sistem</h3>', unsafe_allow_html=True)
     st.markdown("""
+    <div class="guidance-list">
     <ul>
         <li><b>HOME:</b> Halaman utama yang menjelaskan tujuan dan metode prediksi sistem.</li>
         <li><b>INPUT DATA:</b> Unggah data time series nilai tukar mata uang.</li>
@@ -183,6 +206,7 @@ if st.session_state['current_page'] == 'home':
         <li><b>PREDIKSI:</b> Menampilkan hasil prediksi nilai tukar dan volatilitas.</li>
         <li><b>INTERPRETASI & SARAN:</b> Penjelasan hasil model dan rekomendasi.</li>
     </ul>
+    </div>
     """, unsafe_allow_html=True)
 
 
@@ -202,8 +226,8 @@ elif st.session_state['current_page'] == 'input_data':
                 st.dataframe(df_general.head())
                 st.session_state['df_currency_raw'] = df_general # Simpan data mentah
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat membaca file: {e}")
-            st.warning("Pastikan file yang diunggah adalah file CSV yang valid dan hanya berisi satu kolom data numerik.")
+            st.error(f"Terjadi kesalahan saat membaca file yang diunggah: {e}")
+            return pd.DataFrame()
     elif 'df_currency_raw' not in st.session_state or st.session_state['df_currency_raw'].empty:
         st.info("Tidak ada file yang diunggah. Mencoba memuat data default 'data/default_currency.csv'.")
         df_general = load_data(uploaded_file=None, default_filename='data/default_currency.csv')
@@ -220,7 +244,7 @@ elif st.session_state['current_page'] == 'input_data':
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         st.subheader("Visualisasi Data Nilai Tukar Mentah")
         fig_raw = go.Figure()
-        fig_raw.add_trace(go.Scatter(y=st.session_state['df_currency_raw']['Value'], mode='lines', name='Nilai Tukar'))
+        fig_raw.add_trace(go.Scatter(y=st.session_state['df_currency_raw']['Value'], mode='lines', name='Nilai Tukar', line=dict(color='#5d8aa8'))) # Warna garis lebih lembut
         fig_raw.update_layout(title_text='Grafik Nilai Tukar Mentah', xaxis_rangeslider_visible=True)
         st.plotly_chart(fig_raw)
 
@@ -284,7 +308,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
                     st.subheader("Visualisasi Data Return")
                     fig_returns = go.Figure()
-                    fig_returns.add_trace(go.Scatter(y=processed_series, mode='lines', name='Data Return'))
+                    fig_returns.add_trace(go.Scatter(y=processed_series, mode='lines', name='Data Return', line=dict(color='#82c0cc'))) # Warna garis lebih lembut
                     fig_returns.update_layout(title_text='Grafik Data Return', xaxis_rangeslider_visible=True)
                     st.plotly_chart(fig_returns)
                 else:
@@ -385,8 +409,8 @@ elif st.session_state['current_page'] == 'data_splitting':
 
             st.subheader("Visualisasi Pembagian Data Return")
             fig_split = go.Figure()
-            fig_split.add_trace(go.Scatter(x=train_data_returns.index, y=train_data_returns.values, mode='lines', name='Data Pelatihan'))
-            fig_split.add_trace(go.Scatter(x=test_data_returns.index, y=test_data_returns.values, mode='lines', name='Data Pengujian'))
+            fig_split.add_trace(go.Scatter(x=train_data_returns.index, y=train_data_returns.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af'))) # Warna biru tua
+            fig_split.add_trace(go.Scatter(x=test_data_returns.index, y=test_data_returns.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e'))) # Warna oranye
             fig_split.update_layout(title_text='Pembagian Data Return Time Series', xaxis_rangeslider_visible=True)
             st.plotly_chart(fig_split)
     else:
@@ -420,7 +444,7 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
 
                     st.subheader("Residual Model ARIMA")
                     fig_res = go.Figure()
-                    fig_res.add_trace(go.Scatter(y=model_arima_fit.resid, mode='lines', name='Residual ARIMA'))
+                    fig_res.add_trace(go.Scatter(y=model_arima_fit.resid, mode='lines', name='Residual ARIMA', line=dict(color='#4c78a8'))) # Warna biru
                     fig_res.update_layout(title_text='Residual Model ARIMA', xaxis_rangeslider_visible=True)
                     st.plotly_chart(fig_res)
 
@@ -453,6 +477,7 @@ elif st.session_state['current_page'] == 'pemodelan_ngarch':
             if st.button("Latih Model NGARCH", key="train_ngarch_button"):
                 try:
                     with st.spinner("Melatih model NGARCH..."):
+                        # Menggunakan 'Garch' sebagai vol_model dengan argumen `o` yang menentukan asimetri (GJR-GARCH)
                         model_ngarch = arch_model(arima_residuals, vol='Garch', p=p_garch, o=o_garch, q=q_garch, dist='t')
                         res_ngarch = model_ngarch.fit(disp='off')
 
@@ -463,7 +488,7 @@ elif st.session_state['current_page'] == 'pemodelan_ngarch':
 
                         st.subheader("Volatilitas Kondisional (Prediksi Varians)")
                         fig_vol = go.Figure()
-                        fig_vol.add_trace(go.Scatter(y=res_ngarch.conditional_volatility, mode='lines', name='Volatilitas Kondisional'))
+                        fig_vol.add_trace(go.Scatter(y=res_ngarch.conditional_volatility, mode='lines', name='Volatilitas Kondisional', line=dict(color='#2ca02c'))) # Warna hijau
                         fig_vol.update_layout(title_text='Volatilitas Kondisional (NGARCH)', xaxis_rangeslider_visible=True)
                         st.plotly_chart(fig_vol)
 
@@ -500,7 +525,7 @@ elif st.session_state['current_page'] == 'prediksi':
         train_data_returns = st.session_state['train_data_returns']
         test_data_returns = st.session_state['test_data_returns']
         original_prices = st.session_state['original_prices_for_reconstruction']
-        return_type = st.session_state.get('return_type', 'Log Return') # Ambil dari session state, default Log Return
+        return_type = st.session_state.get('return_type', 'Log Return')
 
         st.subheader("Konfigurasi Prediksi")
         num_forecast_steps = st.number_input("Jumlah langkah prediksi ke depan:", min_value=1, max_value=30, value=5, key="num_forecast_steps")
@@ -509,14 +534,22 @@ elif st.session_state['current_page'] == 'prediksi':
             try:
                 with st.spinner("Melakukan prediksi ARIMA dan NGARCH..."):
                     # --- Prediksi ARIMA (Mean Equation) ---
-                    start_idx = len(train_data_returns)
-                    end_idx = len(train_data_returns) + len(test_data_returns) - 1
+                    # Perbaikan: Mengambil index terakhir dari data training untuk memulai prediksi
+                    # Ini lebih robust jika index bukan numerik sederhana
+                    start_pred_idx = len(train_data_returns)
+                    end_pred_idx = len(train_data_returns) + len(test_data_returns) - 1
 
-                    arima_forecast_returns_test = model_arima_fit.predict(start=start_idx, end=end_idx, typ='levels')
-                    forecast_out_of_sample_returns = model_arima_fit.predict(start=len(original_prices), end=len(original_prices) + num_forecast_steps -1, typ='levels')
+                    arima_forecast_returns_test = model_arima_fit.predict(start=start_pred_idx, end=end_pred_idx, typ='levels')
+                    
+                    # Prediksi Out-of-Sample (Future)
+                    # Ambil indeks terakhir dari data harga asli untuk kelanjutan
+                    future_start_idx_for_predict = len(original_prices)
+                    future_end_idx_for_predict = len(original_prices) + num_forecast_steps - 1
+                    forecast_out_of_sample_returns = model_arima_fit.predict(start=future_start_idx_for_predict, end=future_end_idx_for_predict, typ='levels')
 
                     # --- Rekonstruksi Harga Asli dari Prediksi Return ---
-                    last_train_price = original_prices.iloc[len(train_data_returns)-1]
+                    # Rekonstruksi untuk data uji
+                    last_train_price = original_prices.iloc[len(train_data_returns)-1]['Value']
                     predicted_prices_test = [last_train_price]
 
                     for r in arima_forecast_returns_test.values:
@@ -528,59 +561,69 @@ elif st.session_state['current_page'] == 'prediksi':
                     predicted_prices_test = np.array(predicted_prices_test[1:])
                     predicted_prices_series = pd.Series(predicted_prices_test, index=test_data_returns.index)
 
-                    last_actual_price = original_prices.iloc[-1]['Value']
-                    future_predicted_prices = [last_actual_price]
+                    # Rekonstruksi untuk future prediction
+                    last_actual_price_full_data = original_prices.iloc[-1]['Value']
+                    future_predicted_prices_list = [last_actual_price_full_data]
+                    
+                    # Buat indeks untuk prediksi masa depan
+                    # Asumsi indeks original_prices adalah numerik atau DateTimeIndex yang berurutan
+                    if isinstance(original_prices.index, pd.DatetimeIndex):
+                        last_date = original_prices.index.max()
+                        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=num_forecast_steps, freq='D') # Asumsi harian
+                        future_price_index = future_dates
+                    else:
+                        future_price_index = pd.RangeIndex(start=original_prices.index.max() + 1, stop=original_prices.index.max() + 1 + num_forecast_steps)
+
                     for r_future in forecast_out_of_sample_returns.values:
                         if return_type == "Log Return":
-                            next_future_price = future_predicted_prices[-1] * np.exp(r_future)
+                            next_future_price = future_predicted_prices_list[-1] * np.exp(r_future)
                         else:
-                            next_future_price = future_predicted_prices[-1] * (1 + r_future)
-                        future_predicted_prices.append(next_future_price)
-                    future_predicted_prices = np.array(future_predicted_prices[1:])
-                    future_price_index = pd.RangeIndex(start=original_prices.index.max() + 1, stop=original_prices.index.max() + 1 + num_forecast_steps)
-                    future_predicted_prices_series = pd.Series(future_predicted_prices, index=future_price_index)
+                            next_future_price = future_predicted_prices_list[-1] * (1 + r_future)
+                        future_predicted_prices_list.append(next_future_price)
+                    future_predicted_prices_series = pd.Series(future_predicted_prices_list[1:], index=future_price_index)
 
 
                     # --- Prediksi Volatilitas (NGARCH) ---
-                    # Ramalan volatilitas untuk keseluruhan horison test set + future
-                    forecast_res_ngarch = model_ngarch_fit.forecast(horizon=len(test_data_returns) + num_forecast_steps)
-                    conditional_variance_forecast = forecast_res_ngarch.variance.values[-1, :]
-                    conditional_volatility_forecast = np.sqrt(conditional_variance_forecast)
+                    # Prediksi volatilitas untuk keseluruhan horison test set + future
+                    # arch_model.forecast mengembalikan objek, ambil nilai varians dari sana
+                    forecast_res_ngarch = model_ngarch_fit.forecast(horizon=len(test_data_returns) + num_forecast_steps, method='simulation', simulations=1000) # Bisa juga 'analytic'
 
-                    full_forecast_vol_index = pd.RangeIndex(start=model_ngarch_fit.conditional_volatility.index.max() + 1,
-                                                            stop=model_ngarch_fit.conditional_volatility.index.max() + 1 + len(test_data_returns) + num_forecast_steps)
-                    
-                    # Pastikan panjang array conditional_volatility_forecast sesuai
-                    if len(conditional_volatility_forecast) < len(full_forecast_vol_index):
-                        # Pad dengan NaN jika ada masalah panjang
-                        conditional_volatility_forecast_padded = np.pad(conditional_volatility_forecast, (0, len(full_forecast_vol_index) - len(conditional_volatility_forecast)), 'constant', constant_values=np.nan)
-                        volatility_forecast_series = pd.Series(conditional_volatility_forecast_padded, index=full_forecast_vol_index)
+                    # Ambil mean dari simulasi varians
+                    conditional_variance_forecast_mean = forecast_res_ngarch.variance.mean.values[-1, :]
+                    conditional_volatility_forecast = np.sqrt(conditional_variance_forecast_mean)
+
+                    # Buat index yang sesuai untuk prediksi volatilitas
+                    # Ini harus dimulai dari indeks setelah volatilitas kondisional terakhir dari data latih
+                    last_vol_index = model_ngarch_fit.conditional_volatility.index.max()
+                    if isinstance(last_vol_index, pd.Timestamp):
+                        full_forecast_vol_index = pd.date_range(start=last_vol_index + pd.Timedelta(days=1), periods=len(test_data_returns) + num_forecast_steps, freq='D')
                     else:
-                         volatility_forecast_series = pd.Series(conditional_volatility_forecast[:len(full_forecast_vol_index)], index=full_forecast_vol_index)
+                        full_forecast_vol_index = pd.RangeIndex(start=last_vol_index + 1, stop=last_vol_index + 1 + len(test_data_returns) + num_forecast_steps)
 
+                    volatility_forecast_series = pd.Series(conditional_volatility_forecast[:len(full_forecast_vol_index)], index=full_forecast_vol_index)
 
                     st.success("Prediksi berhasil dilakukan!")
 
                     # --- Visualisasi Hasil Prediksi Nilai Tukar ---
                     st.subheader("Prediksi Nilai Tukar (ARIMA)")
                     fig_price = go.Figure()
-                    fig_price.add_trace(go.Scatter(x=original_prices.index, y=original_prices['Value'], mode='lines', name='Harga Aktual'))
-                    fig_price.add_trace(go.Scatter(x=predicted_prices_series.index, y=predicted_prices_series.values, mode='lines', name='Prediksi ARIMA (Test)', line=dict(color='red', dash='dash')))
-                    fig_price.add_trace(go.Scatter(x=future_predicted_prices_series.index, y=future_predicted_prices_series.values, mode='lines', name='Prediksi ARIMA (Future)', line=dict(color='green', dash='dot')))
+                    fig_price.add_trace(go.Scatter(x=original_prices.index, y=original_prices['Value'], mode='lines', name='Harga Aktual', line=dict(color='#3f72af'))) # Biru tua
+                    fig_price.add_trace(go.Scatter(x=predicted_prices_series.index, y=predicted_prices_series.values, mode='lines', name='Prediksi ARIMA (Test)', line=dict(color='#d62728', dash='dash'))) # Merah
+                    fig_price.add_trace(go.Scatter(x=future_predicted_prices_series.index, y=future_predicted_prices_series.values, mode='lines', name='Prediksi ARIMA (Future)', line=dict(color='#2ca02c', dash='dot'))) # Hijau
                     fig_price.update_layout(title_text='Prediksi Nilai Tukar ARIMA', xaxis_rangeslider_visible=True)
                     st.plotly_chart(fig_price)
 
                     # --- Visualisasi Hasil Prediksi Volatilitas ---
                     st.subheader("Prediksi Volatilitas (NGARCH)")
                     fig_volatility = go.Figure()
-                    fig_volatility.add_trace(go.Scatter(x=model_ngarch_fit.conditional_volatility.index, y=model_ngarch_fit.conditional_volatility, mode='lines', name='Volatilitas Aktual (Historis)', line=dict(color='blue')))
-                    fig_volatility.add_trace(go.Scatter(x=volatility_forecast_series.index, y=volatility_forecast_series.values, mode='lines', name='Prediksi Volatilitas (NGARCH)', line=dict(color='purple', dash='dot')))
+                    fig_volatility.add_trace(go.Scatter(x=model_ngarch_fit.conditional_volatility.index, y=model_ngarch_fit.conditional_volatility, mode='lines', name='Volatilitas Aktual (Historis)', line=dict(color='#8c564b'))) # Coklat
+                    fig_volatility.add_trace(go.Scatter(x=volatility_forecast_series.index, y=volatility_forecast_series.values, mode='lines', name='Prediksi Volatilitas (NGARCH)', line=dict(color='#9467bd', dash='dot'))) # Ungu
                     fig_volatility.update_layout(title_text='Prediksi Volatilitas NGARCH', xaxis_rangeslider_visible=True)
                     st.plotly_chart(fig_volatility)
 
                     # --- Evaluasi Metrik (untuk data uji) ---
                     from sklearn.metrics import mean_squared_error, mean_absolute_error
-                    actual_test_prices = original_prices['Value'].iloc[start_idx:end_idx+1]
+                    actual_test_prices = original_prices['Value'].iloc[start_pred_idx:end_pred_idx+1]
 
                     st.subheader("Metrik Evaluasi")
                     if len(actual_test_prices) == len(predicted_prices_series):
@@ -653,7 +696,7 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
         st.write("""
         Model ARIMA-NGARCH adalah alat yang kuat untuk memprediksi nilai tukar dan volatilitasnya.
         Prediksi nilai tukar membantu dalam pengambilan keputusan investasi atau transaksi di masa depan,
-        sementara prediksi volatilitas memberikan wawasan tentang tingkat risiko yang mungkin terjadi.
+        sementai prediksi volatilitas memberikan wawasan tentang tingkat risiko yang mungkin terjadi.
         """)
 
         if st.session_state.get('last_forecast_price') is not None and st.session_state.get('last_forecast_volatility') is not None:
