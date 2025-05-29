@@ -171,11 +171,22 @@ elif st.session_state['current_page'] == 'arima_ngarch':
     # Tambahkan elemen UI khusus ARIMA-NGARCH Anda di sini, contoh:
     st.subheader("Unggah Data Mata Uang")
     uploaded_file = st.file_uploader("Pilih file CSV data mata uang", type=["csv"])
+
     if uploaded_file is not None:
-        st.success("File berhasil diunggah!")
-        # Anda kemudian akan memuat dan memproses data di sini
-        # Untuk demonstrasi, hanya menampilkan pesan
-        st.write("Data akan diproses untuk analisis ARIMA-NGARCH.")
+        try:
+            # Membaca file langsung dari objek UploadedFile
+            df = pd.read_csv(uploaded_file)
+            st.success("File berhasil diunggah dan dibaca!")
+            st.write("5 baris pertama dari data Anda:")
+            st.dataframe(df.head())
+
+            # Di sinilah Anda akan melanjutkan dengan pemrosesan data ARIMA-NGARCH
+            # Misalnya, menampilkan kolom yang tersedia, meminta pemilihan kolom, dll.
+            st.write("Data siap untuk analisis ARIMA-NGARCH.")
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat membaca file: {e}")
+            st.warning("Pastikan file yang diunggah adalah file CSV yang valid.")
 
     st.subheader("Hasil Prediksi dan Visualisasi")
     st.info("Area ini akan menampilkan grafik prediksi, volatilitas, dan metrik evaluasi model.")
