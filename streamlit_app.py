@@ -35,7 +35,7 @@ st.subheader("Data yang Dimuat")
 st.dataframe(df)
 
 import streamlit as st
-import pandas as pd # Penting: Pastikan pandas diimpor!
+import pandas as pd
 
 # -----------------------------------------------------------------------------
 # Menggambar halaman utama
@@ -83,8 +83,14 @@ st.markdown("""
             background-color: #c0c2c6;
         }
         /* Styling untuk tombol yang saat ini dipilih (dari session state) */
-        .stButton>button[aria-selected="true"] { /* Custom attribute for active state */
-            background-color: #d0d2d6; /* Sedikit lebih gelap untuk status aktif */
+        /* Perhatian: Ini adalah pendekatan custom dan mungkin tidak bekerja sempurna
+           dengan semua versi Streamlit atau browser tanpa JavaScript tambahan.
+           Streamlit umumnya mengelola state tombolnya sendiri.
+           Untuk styling yang lebih andal, pertimbangkan untuk menggunakan Streamlit components
+           atau memanipulasi DOM dengan JavaScript injeksi jika memungkinkan.
+        */
+        .stButton button[aria-selected="true"] { /* Custom attribute for active state */
+            background-color: #d0d2d6 !important; /* Sedikit lebih gelap untuk status aktif */
             font-weight: bold;
         }
 
@@ -146,13 +152,74 @@ if 'current_page' not in st.session_state:
 # Logika untuk tombol sidebar agar tetap "aktif" secara visual
 for item, key in menu_items.items():
     # Menambahkan atribut kustom untuk styling CSS
-    button_html = f'<button style="width:100%; border-radius:0.5rem; border:1px solid #ddd; background-color:{"#d0d2d6" if st.session_state["current_page"] == key else "#f0f2f6"}; color:#333; padding:0.75rem 1rem; font-size:1rem; text-align:left; margin-bottom:0.2rem;" {"aria-selected='true'" if st.session_state["current_page"] == key else ""}>{item}</button>'
+    # Perbaikan: Gunakan tanda kutip tunggal untuk nilai di dalam string ganda
+    # dan gunakan st.sidebar.markdown dengan unsafe_allow_html=True untuk
+    # menampilkan tombol dengan styling kustom, dan gunakan st.session_state
+    # untuk menangani navigasi ketika tombol tersebut diklik.
     
-    # Karena st.button tidak mendukung atribut kustom langsung, kita bisa menggunakan trik ini
-    # Namun, untuk fungsionalitas, kita tetap memerlukan st.button
-    # Kita akan menggunakan st.button dan mencoba menyinkronkan tampilan dengan CSS
+    # Pendekatan yang lebih aman untuk styling tombol aktif di Streamlit adalah
+    # dengan mengandalkan CSS selektor yang ada atau menggunakannya dengan hati-hati.
+    # Karena st.button adalah komponen, memanipulasi HTML-nya secara langsung
+    # seringkali tidak disarankan atau tidak efektif.
+
+    # Namun, jika Anda ingin menjaga tampilan tombol yang "aktif" seperti di gambar,
+    # kita bisa menggunakan st.columns dan st.button di dalamnya dengan sedikit trik CSS.
+    
+    # Alternatif sederhana tanpa HTML kustom yang rumit di st.button:
+    # Anda bisa menggunakan warna latar belakang langsung di tombol Streamlit
+    # jika itu cukup. Namun, untuk meniru tampilan gambar, CSS lebih baik.
+    
+    # Untuk mengatasi SyntaxError, kita akan memperbaiki f-string
+    # Namun, perlu diingat bahwa menginject HTML custom ke st.button seringkali
+    # tidak bekerja seperti yang diharapkan karena Streamlit merender komponennya.
+    # Solusi terbaik untuk styling yang kompleks adalah dengan CSS class yang benar
+    # atau custom component.
+    
+    # Untuk tujuan perbaikan SyntaxError:
+    # Kita akan tetap menggunakan st.button dan mencoba menyinkronkan tampilan
+    # aktif melalui CSS yang lebih umum atau, jika benar-benar ingin HTML kustom,
+    # gunakan st.markdown untuk tombol buatan tangan (tetapi kemudian kehilangan
+    # fungsionalitas st.button native).
+
+    # Mari kita coba pendekatan yang lebih "Streamlit-friendly" untuk tombol aktif:
+    # Kita akan tetap menggunakan st.button dan biarkan CSS menangani styling
+    # berdasarkan apakah tombolnya 'aktif' atau tidak.
+    
+    # Hapus baris button_html = f'<button style=...>' karena itu menyebabkan error
+    # dan biasanya tidak direkomendasikan untuk menimpa st.button secara langsung.
+    
+    # Kita hanya perlu tombol Streamlit biasa.
     if st.sidebar.button(item, key=key):
         st.session_state['current_page'] = key
+    
+    # Untuk membuat tombol aktif secara visual (seperti yang Anda inginkan di CSS):
+    # Ini memerlukan sedikit trik karena Streamlit tidak menyediakan class 'active' secara langsung
+    # Kita bisa menambahkan JavaScript melalui st.markdown untuk menambahkan class
+    # atau mengubah style, tapi itu jauh lebih kompleks.
+    # Untuk saat ini, kita akan fokus pada fungsionalitas dan mencegah SyntaxError.
+    
+    # Solusi paling bersih untuk styling tombol aktif secara dinamis
+    # adalah dengan mengatur style berdasarkan kondisi dalam loop:
+    if st.session_state['current_page'] == key:
+        # Ini akan menimpa gaya default tombol jika kita mencoba menampilkannya lagi,
+        # yang tidak ideal. Streamlit sudah merender tombol di st.button.
+        # Jadi, cara terbaik adalah dengan CSS selektor yang menargetkan
+        # tombol yang sedang aktif.
+
+        # Saya akan menghapus baris `button_html` yang menyebabkan masalah
+        # dan mempertahankan `st.sidebar.button`.
+        # Untuk styling aktif, saya akan mengandalkan selektor CSS yang lebih umum
+        # jika itu memungkinkan, atau menunjukkan cara lain.
+
+        # Mari kita coba sedikit modifikasi CSS untuk menangani tombol yang aktif.
+        # Streamlit memberikan ID atau class yang bisa kita target.
+        # Biasanya tombol aktif akan mendapatkan fokus atau state tertentu.
+
+        # Hapus baris yang menyebabkan SyntaxError.
+        # button_html = f'<button style="width:100%; border-radius:0.5rem; border:1px solid #ddd; background-color:{"#d0d2d6" if st.session_state["current_page"] == key else "#f0f2f6"}; color:#333; padding:0.75rem 1rem; font-size:1rem; text-align:left; margin-bottom:0.2rem;" {"aria-selected='true'" if st.session_state["current_page"] == key else ""}>{item}</button>'
+        # Ini tidak akan digunakan, jadi hapus saja.
+
+        pass # `pass` karena kita tidak lagi membuat HTML tombol secara manual di sini.
 
 # Area Konten Utama
 if st.session_state['current_page'] == 'home':
@@ -192,21 +259,14 @@ elif st.session_state['current_page'] == 'arima_ngarch':
 
     if uploaded_file is not None:
         try:
-            # Membaca file langsung dari objek UploadedFile tanpa perlu menyimpan ke disk
             df = pd.read_csv(uploaded_file)
             st.success("File berhasil diunggah dan dibaca!")
             st.write("5 baris pertama dari data Anda:")
             st.dataframe(df.head())
 
-            # Simpan DataFrame ke session state jika Anda perlu menggunakannya di tempat lain
             st.session_state['df_currency'] = df
 
             st.write("Data siap untuk analisis ARIMA-NGARCH.")
-            # Di sini Anda bisa menambahkan input pengguna lebih lanjut
-            # Misalnya, untuk memilih kolom time series, kolom tanggal, dll.
-            # Contoh:
-            # selected_column = st.selectbox("Pilih kolom untuk analisis:", df.columns)
-            # st.write(f"Anda memilih kolom: {selected_column}")
 
         except Exception as e:
             st.error(f"Terjadi kesalahan saat membaca file: {e}")
@@ -214,15 +274,8 @@ elif st.session_state['current_page'] == 'arima_ngarch':
 
     st.subheader("Hasil Prediksi dan Visualisasi")
     st.info("Area ini akan menampilkan grafik prediksi, volatilitas, dan metrik evaluasi model.")
-    # Di sinilah Anda akan menambahkan logika untuk:
-    # 1. Melatih model ARIMA dan NGARCH (jika data sudah diunggah dan diproses)
-    # 2. Menampilkan grafik data asli, prediksi, dan volatilitas
-    # 3. Menampilkan metrik evaluasi model (RMSE, MAE, dll.)
-
-    # Contoh placeholder:
     if 'df_currency' in st.session_state and not st.session_state['df_currency'].empty:
         st.write("Contoh tampilan data yang diunggah:")
-        # Anggap kolom pertama adalah time series
         st.line_chart(st.session_state['df_currency'].iloc[:, 0])
     else:
         st.info("Unggah data untuk melihat contoh visualisasi.")
@@ -245,20 +298,17 @@ elif st.session_state['current_page'] == 'input_data':
                 st.success("File berhasil diunggah dan dibaca!")
                 st.write("5 baris pertama dari data Anda:")
                 st.dataframe(df_general.head())
-                st.session_state['df_general'] = df_general # Simpan ke session state
+                st.session_state['df_general'] = df_general
         except Exception as e:
             st.error(f"Terjadi kesalahan saat membaca file: {e}")
             st.warning("Pastikan file yang diunggah adalah file yang valid dan diformat dengan benar.")
 
-# Tambahkan blok untuk halaman lain di sini sesuai kebutuhan Anda
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing</div>', unsafe_allow_html=True)
     st.write("Lakukan langkah-langkah pembersihan dan persiapan data di bagian ini, seperti penanganan nilai hilang, normalisasi, dll.")
-    # Contoh penggunaan data yang diunggah:
     if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
         st.write("Data yang tersedia untuk preprocessing:")
         st.dataframe(st.session_state['df_general'].head())
-        # Tambahkan opsi preprocessing di sini
     else:
         st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
@@ -278,10 +328,8 @@ elif st.session_state['current_page'] == 'data_splitting':
     if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
         st.write("Data yang akan dibagi:")
         st.dataframe(st.session_state['df_general'].head())
-        # Tambahkan input untuk rasio pembagian data
         train_ratio = st.slider("Pilih rasio data pelatihan:", 0.5, 0.9, 0.8, 0.05)
         st.write(f"Rasio pelatihan: {train_ratio*100}%")
-        # Logika pembagian data
     else:
         st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
@@ -295,18 +343,14 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
     else:
         st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
-# Dan seterusnya untuk halaman lainnya...
 elif st.session_state['current_page'] == 'pemodelan_anfis_abc':
     st.markdown('<div class="main-header">Pemodelan ANFIS ABC</div>', unsafe_allow_html=True)
     st.write("Konfigurasi dan latih model ANFIS dengan optimasi Algoritma Koloni Lebah (ABC).")
-    # Tambahkan elemen UI untuk ANFIS ABC
 
 elif st.session_state['current_page'] == 'pemodelan_arima_anfis_abc':
     st.markdown('<div class="main-header">Pemodelan ARIMA-ANFIS ABC</div>', unsafe_allow_html=True)
     st.write("Integrasi dan pelatihan model gabungan ARIMA dan ANFIS ABC.")
-    # Tambahkan elemen UI untuk ARIMA-ANFIS ABC
 
 elif st.session_state['current_page'] == 'prediksi':
     st.markdown('<div class="main-header">Prediksi</div>', unsafe_allow_html=True)
     st.write("Lihat dan evaluasi hasil prediksi dari model yang telah Anda latih.")
-    # Tampilkan grafik prediksi dan metrik evaluasi
