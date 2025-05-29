@@ -3,57 +3,55 @@ import pandas as pd
 import math
 from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# --- Konfigurasi Halaman (Hanya dipanggil sekali di awal) ---
 st.set_page_config(
-    page_title='Prediksi ARIMA-NGARCH',
-    page_icon='https://example.com/currency-icon.png'  # Ganti dengan URL ikon kamu
+    page_title='Prediksi ARIMA-NGARCH dan ANFIS',
+    page_icon='📈',  # Anda bisa menggunakan emoji atau URL yang valid
+    layout="wide" # Memastikan tata letak lebar secara default
 )
 
-# Fungsi pembaca data yang fleksibel dan memiliki TTL cache
-@st.cache_data(ttl=86400)  # TTL 86400 detik = 1 hari
+# --- Fungsi Pembaca Data (dengan caching) ---
+# Menggunakan st.cache_data untuk caching data yang diunggah atau default.
+# TTL (Time To Live) 86400 detik = 1 hari.
+@st.cache_data(ttl=86400)
 def load_data(uploaded_file=None, default_filename='data/default.csv'):
     """
-    Membaca data dari file upload atau default, dan menyimpan hasilnya di cache
-    selama maksimal 1 hari (TTL = 86400 detik).
+    Membaca data dari objek file yang diunggah atau dari file default lokal.
     """
     if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
+        try:
+            # Pandas dapat membaca langsung dari objek BytesIO yang diberikan oleh Streamlit's UploadedFile
+            df = pd.read_csv(uploaded_file)
+            return df
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat membaca file yang diunggah: {e}")
+            return pd.DataFrame() # Mengembalikan DataFrame kosong jika ada error
     else:
+        # Coba membaca dari file default jika ada
+        # Pastikan Anda memiliki folder 'data' dan 'default.csv' di root proyek Anda
         path = Path(__file__).parent / default_filename
-        df = pd.read_csv(path)
-    return df
+        if path.exists():
+            try:
+                df = pd.read_csv(path)
+                return df
+            except Exception as e:
+                st.warning(f"Tidak dapat membaca file default '{default_filename}': {e}")
+                return pd.DataFrame()
+        else:
+            st.warning(f"File default '{default_filename}' tidak ditemukan.")
+            return pd.DataFrame()
 
-# Sidebar untuk upload
-st.sidebar.header("Unggah File CSV Anda")
-uploaded_file = st.sidebar.file_uploader("Pilih file CSV", type="csv")
-
-# Panggil fungsi dengan cache
-df = load_data(uploaded_file)
-
-# Tampilkan
-st.subheader("Data yang Dimuat")
-st.dataframe(df)
-
-import streamlit as st
-import pandas as pd
-
-# -----------------------------------------------------------------------------
-# Menggambar halaman utama
-
-# Konfigurasi halaman untuk tata letak yang lebih lebar
-st.set_page_config(layout="wide")
-
-# CSS Kustom untuk sidebar dan area konten utama agar menyerupai gambar
+# --- Custom CSS untuk Tampilan ---
 st.markdown("""
     <style>
         /* Mengubah warna latar belakang sidebar */
-        .css-1d3f8aq.e1fqkh3o1 {
+        .css-1d3f8aq.e1fqkh3o1 { /* Ini class untuk sidebar di Streamlit 1.x */
             background-color: #f0f2f6; /* Abu-abu muda untuk latar belakang sidebar */
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
         /* Mengatur padding untuk konten utama */
-        .css-1v0mbdj.e1fqkh3o0 {
+        .css-1v0mbdj.e1fqkh3o0 { /* Ini class untuk main content di Streamlit 1.x */
             padding-top: 2rem;
             padding-bottom: 2rem;
             padding-left: 5rem; /* Sesuaikan sesuai kebutuhan */
@@ -82,17 +80,25 @@ st.markdown("""
         .stButton>button:active {
             background-color: #c0c2c6;
         }
-        /* Styling untuk tombol yang saat ini dipilih (dari session state) */
-        /* Perhatian: Ini adalah pendekatan custom dan mungkin tidak bekerja sempurna
-           dengan semua versi Streamlit atau browser tanpa JavaScript tambahan.
-           Streamlit umumnya mengelola state tombolnya sendiri.
-           Untuk styling yang lebih andal, pertimbangkan untuk menggunakan Streamlit components
-           atau memanipulasi DOM dengan JavaScript injeksi jika memungkinkan.
+
+        /* --- Styling untuk Tombol Navigasi Aktif --- */
+        /* Ini adalah trik CSS untuk mencoba memberikan efek "aktif" visual
+           pada tombol yang dipilih. Streamlit sering mengubah class internal,
+           jadi ini mungkin perlu disesuaikan jika Streamlit versi Anda berubah.
+           Ini menargetkan tombol yang sedang difokuskan (setelah diklik) dan
+           tidak dalam keadaan 'active' (yaitu, mouse sudah dilepas).
+           Ini adalah heuristik, bukan jaminan 100% karena kontrol Streamlit.
         */
-        .stButton button[aria-selected="true"] { /* Custom attribute for active state */
-            background-color: #d0d2d6 !important; /* Sedikit lebih gelap untuk status aktif */
+        .stButton button[data-testid^="stSidebarNavButton"]:focus:not(:active) {
+            background-color: #d0d2d6 !important; /* Contoh warna aktif */
             font-weight: bold;
         }
+        /* Untuk memastikan tombol yang sedang terpilih tetap 'aktif' walaupun fokus hilang */
+        /* Ini akan jauh lebih rumit tanpa JavaScript atau komponen kustom.
+           Alternatif: Menambahkan class CSS melalui JavaScript injeksi.
+           Untuk saat ini, mari fokus pada fungsionalitas dan CSS yang lebih sederhana.
+        */
+
 
         /* Styling untuk header utama */
         .main-header {
@@ -128,7 +134,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menu Sidebar
+# --- Sidebar Menu ---
 st.sidebar.markdown("#### MENU NAVIGASI")
 
 # Mendefinisikan item menu dan konten halaman yang sesuai
@@ -142,86 +148,20 @@ menu_items = {
     "PEMODELAN ANFIS ABC": "pemodelan_anfis_abc",
     "PEMODELAN ARIMA-ANFIS ABC": "pemodelan_arima_anfis_abc",
     "PREDIKSI": "prediksi",
-    "ARIMA-NGARCH": "arima_ngarch" # Item baru untuk permintaan Anda
+    "ARIMA-NGARCH": "arima_ngarch"
 }
 
 # Menggunakan session state untuk mengelola halaman aktif
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'home' # Halaman default
 
-# Logika untuk tombol sidebar agar tetap "aktif" secara visual
+# Loop untuk membuat tombol di sidebar
 for item, key in menu_items.items():
-    # Menambahkan atribut kustom untuk styling CSS
-    # Perbaikan: Gunakan tanda kutip tunggal untuk nilai di dalam string ganda
-    # dan gunakan st.sidebar.markdown dengan unsafe_allow_html=True untuk
-    # menampilkan tombol dengan styling kustom, dan gunakan st.session_state
-    # untuk menangani navigasi ketika tombol tersebut diklik.
-    
-    # Pendekatan yang lebih aman untuk styling tombol aktif di Streamlit adalah
-    # dengan mengandalkan CSS selektor yang ada atau menggunakannya dengan hati-hati.
-    # Karena st.button adalah komponen, memanipulasi HTML-nya secara langsung
-    # seringkali tidak disarankan atau tidak efektif.
-
-    # Namun, jika Anda ingin menjaga tampilan tombol yang "aktif" seperti di gambar,
-    # kita bisa menggunakan st.columns dan st.button di dalamnya dengan sedikit trik CSS.
-    
-    # Alternatif sederhana tanpa HTML kustom yang rumit di st.button:
-    # Anda bisa menggunakan warna latar belakang langsung di tombol Streamlit
-    # jika itu cukup. Namun, untuk meniru tampilan gambar, CSS lebih baik.
-    
-    # Untuk mengatasi SyntaxError, kita akan memperbaiki f-string
-    # Namun, perlu diingat bahwa menginject HTML custom ke st.button seringkali
-    # tidak bekerja seperti yang diharapkan karena Streamlit merender komponennya.
-    # Solusi terbaik untuk styling yang kompleks adalah dengan CSS class yang benar
-    # atau custom component.
-    
-    # Untuk tujuan perbaikan SyntaxError:
-    # Kita akan tetap menggunakan st.button dan mencoba menyinkronkan tampilan
-    # aktif melalui CSS yang lebih umum atau, jika benar-benar ingin HTML kustom,
-    # gunakan st.markdown untuk tombol buatan tangan (tetapi kemudian kehilangan
-    # fungsionalitas st.button native).
-
-    # Mari kita coba pendekatan yang lebih "Streamlit-friendly" untuk tombol aktif:
-    # Kita akan tetap menggunakan st.button dan biarkan CSS menangani styling
-    # berdasarkan apakah tombolnya 'aktif' atau tidak.
-    
-    # Hapus baris button_html = f'<button style=...>' karena itu menyebabkan error
-    # dan biasanya tidak direkomendasikan untuk menimpa st.button secara langsung.
-    
-    # Kita hanya perlu tombol Streamlit biasa.
     if st.sidebar.button(item, key=key):
         st.session_state['current_page'] = key
-    
-    # Untuk membuat tombol aktif secara visual (seperti yang Anda inginkan di CSS):
-    # Ini memerlukan sedikit trik karena Streamlit tidak menyediakan class 'active' secara langsung
-    # Kita bisa menambahkan JavaScript melalui st.markdown untuk menambahkan class
-    # atau mengubah style, tapi itu jauh lebih kompleks.
-    # Untuk saat ini, kita akan fokus pada fungsionalitas dan mencegah SyntaxError.
-    
-    # Solusi paling bersih untuk styling tombol aktif secara dinamis
-    # adalah dengan mengatur style berdasarkan kondisi dalam loop:
-    if st.session_state['current_page'] == key:
-        # Ini akan menimpa gaya default tombol jika kita mencoba menampilkannya lagi,
-        # yang tidak ideal. Streamlit sudah merender tombol di st.button.
-        # Jadi, cara terbaik adalah dengan CSS selektor yang menargetkan
-        # tombol yang sedang aktif.
 
-        # Saya akan menghapus baris `button_html` yang menyebabkan masalah
-        # dan mempertahankan `st.sidebar.button`.
-        # Untuk styling aktif, saya akan mengandalkan selektor CSS yang lebih umum
-        # jika itu memungkinkan, atau menunjukkan cara lain.
+# --- Area Konten Utama Berdasarkan Halaman yang Dipilih ---
 
-        # Mari kita coba sedikit modifikasi CSS untuk menangani tombol yang aktif.
-        # Streamlit memberikan ID atau class yang bisa kita target.
-        # Biasanya tombol aktif akan mendapatkan fokus atau state tertentu.
-
-        # Hapus baris yang menyebabkan SyntaxError.
-        # button_html = f'<button style="width:100%; border-radius:0.5rem; border:1px solid #ddd; background-color:{"#d0d2d6" if st.session_state["current_page"] == key else "#f0f2f6"}; color:#333; padding:0.75rem 1rem; font-size:1rem; text-align:left; margin-bottom:0.2rem;" {"aria-selected='true'" if st.session_state["current_page"] == key else ""}>{item}</button>'
-        # Ini tidak akan digunakan, jadi hapus saja.
-
-        pass # `pass` karena kita tidak lagi membuat HTML tombol secara manual di sini.
-
-# Area Konten Utama
 if st.session_state['current_page'] == 'home':
     st.markdown('<div class="main-header">Prediksi Data Time Series Univariat <br> Menggunakan Model ARIMA-ANFIS dengan Optimasi ABC</div>', unsafe_allow_html=True)
 
@@ -248,60 +188,93 @@ if st.session_state['current_page'] == 'home':
     </ul>
     """, unsafe_allow_html=True)
 
+elif st.session_state['current_page'] == 'input_data':
+    st.markdown('<div class="main-header">Input Data</div>', unsafe_allow_html=True)
+    st.write("Di sinilah Anda dapat mengunggah berbagai jenis data time series untuk aplikasi Anda. Data yang diunggah akan disimpan dalam sesi untuk digunakan di halaman lain.")
+
+    uploaded_file_input_data_page = st.file_uploader("Pilih file data (CSV, Excel, dll.)", type=["csv", "xlsx", "txt"], key="input_data_uploader")
+
+    if uploaded_file_input_data_page is not None:
+        try:
+            # Memanggil fungsi load_data yang sudah dicache
+            df_general = load_data(uploaded_file=uploaded_file_input_data_page)
+
+            if not df_general.empty:
+                st.success("File berhasil diunggah dan dibaca!")
+                st.write("5 baris pertama dari data Anda:")
+                st.dataframe(df_general.head())
+                st.session_state['df_general'] = df_general # Simpan ke session state
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat membaca file: {e}")
+            st.warning("Pastikan file yang diunggah adalah file yang valid dan diformat dengan benar.")
+    elif 'df_general' not in st.session_state or st.session_state['df_general'].empty:
+        # Jika tidak ada file diunggah di halaman ini, dan tidak ada data di session state,
+        # coba muat data default.
+        st.info("Tidak ada file yang diunggah. Mencoba memuat data default 'data/default.csv'.")
+        df_general_default = load_data(uploaded_file=None, default_filename='data/default.csv')
+        if not df_general_default.empty:
+            st.success("Data default berhasil dimuat.")
+            st.dataframe(df_general_default.head())
+            st.session_state['df_general'] = df_general_default
+        else:
+            st.warning("Tidak ada data yang dimuat. Silakan unggah file atau pastikan 'data/default.csv' ada.")
+    else:
+        st.write("Data yang sudah diunggah sebelumnya:")
+        st.dataframe(st.session_state['df_general'].head())
+
+
 elif st.session_state['current_page'] == 'arima_ngarch':
     st.markdown('<div class="main-header">💹 Prediksi ARIMA-NGARCH dengan Model Volatilitas Mata Uang</div>', unsafe_allow_html=True)
     st.markdown("""
         Unggah data time series mata uang Anda untuk melakukan analisis dan prediksi menggunakan model ARIMA dan NGARCH.
         Dashboard ini memudahkan visualisasi hasil prediksi dan evaluasi model volatilitas.
     """)
-    st.subheader("Unggah Data Mata Uang")
-    uploaded_file = st.file_uploader("Pilih file CSV data mata uang", type=["csv"])
+    st.subheader("Data untuk Analisis ARIMA-NGARCH")
 
-    if uploaded_file is not None:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.success("File berhasil diunggah dan dibaca!")
-            st.write("5 baris pertama dari data Anda:")
-            st.dataframe(df.head())
+    # Coba gunakan data yang sudah diunggah di halaman 'Input Data'
+    if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
+        st.write("Menggunakan data yang sudah dimuat dari halaman 'Input Data':")
+        df_currency = st.session_state['df_general']
+        st.dataframe(df_currency.head())
 
-            st.session_state['df_currency'] = df
+        # Anda bisa menambahkan logika di sini untuk memilih kolom dari df_currency
+        # Misalnya: selected_column = st.selectbox("Pilih kolom mata uang:", df_currency.columns)
+        # Atau melakukan prediksi langsung jika strukturnya sudah diketahui.
 
-            st.write("Data siap untuk analisis ARIMA-NGARCH.")
+    else:
+        st.info("Tidak ada data yang dimuat. Silakan unggah data di halaman 'Input Data' atau di sini.")
+        # Opsi unggah file khusus untuk halaman ARIMA-NGARCH jika ingin terpisah
+        uploaded_file_arima_ngarch_page = st.file_uploader("Atau, unggah file CSV data mata uang di sini:", type=["csv"], key="arima_ngarch_uploader")
+        if uploaded_file_arima_ngarch_page is not None:
+            df_currency = load_data(uploaded_file=uploaded_file_arima_ngarch_page)
+            if not df_currency.empty:
+                st.success("File berhasil diunggah dan dibaca di halaman ARIMA-NGARCH!")
+                st.dataframe(df_currency.head())
+                st.session_state['df_currency_specific'] = df_currency # Simpan di session state yang berbeda
+            else:
+                st.warning("Gagal memuat data dari file yang diunggah.")
+        elif 'df_currency_specific' in st.session_state and not st.session_state['df_currency_specific'].empty:
+            st.write("Menggunakan data yang sudah dimuat sebelumnya di halaman ini:")
+            df_currency = st.session_state['df_currency_specific']
+            st.dataframe(df_currency.head())
+        else:
+            st.warning("Tidak ada data yang tersedia untuk analisis ARIMA-NGARCH. Silakan unggah data.")
 
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat membaca file: {e}")
-            st.warning("Pastikan file yang diunggah adalah file CSV yang valid dan diformat dengan benar.")
 
     st.subheader("Hasil Prediksi dan Visualisasi")
     st.info("Area ini akan menampilkan grafik prediksi, volatilitas, dan metrik evaluasi model.")
+    # Contoh placeholder:
     if 'df_currency' in st.session_state and not st.session_state['df_currency'].empty:
-        st.write("Contoh tampilan data yang diunggah:")
+        st.write("Contoh tampilan data yang diunggah (dari df_general):")
+        # Anggap kolom pertama adalah time series
         st.line_chart(st.session_state['df_currency'].iloc[:, 0])
+    elif 'df_currency_specific' in st.session_state and not st.session_state['df_currency_specific'].empty:
+        st.write("Contoh tampilan data yang diunggah (dari df_currency_specific):")
+        st.line_chart(st.session_state['df_currency_specific'].iloc[:, 0])
     else:
         st.info("Unggah data untuk melihat contoh visualisasi.")
 
-elif st.session_state['current_page'] == 'input_data':
-    st.markdown('<div class="main-header">Input Data</div>', unsafe_allow_html=True)
-    st.write("Di sinilah Anda dapat mengunggah berbagai jenis data time series untuk aplikasi Anda.")
-    uploaded_file_general = st.file_uploader("Pilih file data (CSV, Excel, dll.)", type=["csv", "xlsx", "txt"])
-    if uploaded_file_general is not None:
-        try:
-            if uploaded_file_general.name.endswith('.csv'):
-                df_general = pd.read_csv(uploaded_file_general)
-            elif uploaded_file_general.name.endswith(('.xls', '.xlsx')):
-                df_general = pd.read_excel(uploaded_file_general)
-            else:
-                st.warning("Format file tidak didukung. Harap unggah file CSV atau Excel.")
-                df_general = pd.DataFrame()
-
-            if not df_general.empty:
-                st.success("File berhasil diunggah dan dibaca!")
-                st.write("5 baris pertama dari data Anda:")
-                st.dataframe(df_general.head())
-                st.session_state['df_general'] = df_general
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat membaca file: {e}")
-            st.warning("Pastikan file yang diunggah adalah file yang valid dan diformat dengan benar.")
 
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing</div>', unsafe_allow_html=True)
@@ -309,6 +282,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
     if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
         st.write("Data yang tersedia untuk preprocessing:")
         st.dataframe(st.session_state['df_general'].head())
+        # Tambahkan opsi preprocessing di sini
     else:
         st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
@@ -346,11 +320,29 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
 elif st.session_state['current_page'] == 'pemodelan_anfis_abc':
     st.markdown('<div class="main-header">Pemodelan ANFIS ABC</div>', unsafe_allow_html=True)
     st.write("Konfigurasi dan latih model ANFIS dengan optimasi Algoritma Koloni Lebah (ABC).")
+    if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
+        st.write("Data yang akan dimodelkan dengan ANFIS ABC:")
+        st.dataframe(st.session_state['df_general'].head())
+        st.info("Tambahkan konfigurasi ANFIS dan kontrol ABC di sini.")
+    else:
+        st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
 elif st.session_state['current_page'] == 'pemodelan_arima_anfis_abc':
     st.markdown('<div class="main-header">Pemodelan ARIMA-ANFIS ABC</div>', unsafe_allow_html=True)
     st.write("Integrasi dan pelatihan model gabungan ARIMA dan ANFIS ABC.")
+    if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
+        st.write("Data yang akan dimodelkan dengan ARIMA-ANFIS ABC:")
+        st.dataframe(st.session_state['df_general'].head())
+        st.info("Integrasikan hasil dari pemodelan ARIMA dan ANFIS ABC di sini.")
+    else:
+        st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
 
 elif st.session_state['current_page'] == 'prediksi':
     st.markdown('<div class="main-header">Prediksi</div>', unsafe_allow_html=True)
     st.write("Lihat dan evaluasi hasil prediksi dari model yang telah Anda latih.")
+    if 'df_general' in st.session_state and not st.session_state['df_general'].empty:
+        st.write("Data yang digunakan untuk prediksi:")
+        st.dataframe(st.session_state['df_general'].head())
+        st.info("Tampilkan grafik prediksi dan metrik evaluasi (RMSE, MAE, dll.) di sini.")
+    else:
+        st.info("Unggah data terlebih dahulu di bagian 'Input Data'.")
