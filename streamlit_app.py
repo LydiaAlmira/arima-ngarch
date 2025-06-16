@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
 import numpy as np
+from pathlib import Path
+import math
 from statsmodels.tsa.stattools import adfuller, kpss
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
@@ -189,7 +189,7 @@ menu_items = {
     "DATA SPLITTING ✂️": "data_splitting",
     "PEMODELAN ARIMA 📈": "pemodelan_arima",
     "PEMODELAN NGARCH 🌪️": "pemodelan_ngarch",
-    "PEMODELAN ARIMA-NGARCH ✨": "pemodelan_arima_ngarch",
+    # "PEMODELAN ARIMA-NGARCH ✨": "pemodelan_arima_ngarch", # DIHAPUS
     "PREDIKSI 🔮": "prediksi",
     "INTERPRETASI & SARAN 💡": "interpretasi_saran",
 }
@@ -227,7 +227,6 @@ if st.session_state['current_page'] == 'home':
         <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi latih dan uji.</li>
         <li><b>PEMODELAN ARIMA 📈:</b> Langkah-langkah untuk membentuk model ARIMA pada data return (untuk prediksi nilai tukar).</li>
         <li><b>PEMODELAN NGARCH 🌪️:</b> Langkah-langkah untuk membentuk model NGARCH pada residual ARIMA (untuk prediksi volatilitas).</li>
-        <li><b>PEMODELAN ARIMA-NGARCH ✨:</b> Integrasi model ARIMA dan NGARCH.</li>
         <li><b>PREDIKSI 🔮:</b> Menampilkan hasil prediksi nilai tukar dan volatilitas.</li>
         <li><b>INTERPRETASI & SARAN 💡:</b> Penjelasan hasil model dan rekomendasi.</li>
     </ul>
@@ -322,7 +321,7 @@ elif st.session_state['current_page'] == 'input_data':
     # Tampilkan data secara keseluruhan di bawah input metadata
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         st.subheader(f"Tampilan Data Terpilih: {st.session_state['selected_currency']} 📊")
-        st.dataframe(st.session_state['df_currency_raw']) # Tampilkan seluruh DataFrame
+        st.dataframe(st.session_state['df_currency_raw'])
         
         # Visualisasi hanya jika ada data yang dipilih
         st.subheader(f"Visualisasi Data Nilai Tukar Mentah: {st.session_state['selected_currency']} 📈")
@@ -331,13 +330,14 @@ elif st.session_state['current_page'] == 'input_data':
         fig_raw.update_layout(title_text=f'Grafik Nilai Tukar Mentah {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
         st.plotly_chart(fig_raw)
 
+
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
     st.write("Lakukan pembersihan dan transformasi data nilai tukar. Untuk model ARIMA-NGARCH, kita perlu mengubah data harga menjadi return (perubahan logaritmik atau persentase). ✨")
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         df_raw = st.session_state['df_currency_raw'].copy()
-        st.write(f"Data nilai tukar mentah untuk {st.session_state['selected_currency']}: 📊")
+        st.write(f"Data nilai tukar mentah untuk {st.session_state.get('selected_currency', '')}: 📊")
         st.dataframe(df_raw.head())
 
         st.subheader("Pilih Kolom Data dan Transformasi 🔄")
@@ -610,17 +610,17 @@ elif st.session_state['current_page'] == 'pemodelan_ngarch':
         st.info("Latih model ARIMA terlebih dahulu di halaman 'Pemodelan ARIMA' untuk mendapatkan residual. ⬆️")
 
 
-elif st.session_state['current_page'] == 'pemodelan_arima_ngarch':
-    st.markdown('<div class="main-header">Pemodelan ARIMA-NGARCH Terintegrasi ✨🔗</div>', unsafe_allow_html=True)
-    st.write(f"Menggabungkan hasil dari model ARIMA dan NGARCH untuk prediksi nilai tukar dan volatilitas untuk {st.session_state.get('selected_currency', '')}. Ini adalah kekuatan penuh model! 💪")
+# elif st.session_state['current_page'] == 'pemodelan_arima_ngarch': # BAGIAN INI DIHAPUS
+#     st.markdown('<div class="main-header">Pemodelan ARIMA-NGARCH Terintegrasi ✨🔗</div>', unsafe_allow_html=True)
+#     st.write(f"Menggabungkan hasil dari model ARIMA dan NGARCH untuk prediksi nilai tukar dan volatilitas untuk {st.session_state.get('selected_currency', '')}. Ini adalah kekuatan penuh model! 💪")
 
-    if 'model_arima_fit' in st.session_state and 'model_ngarch_fit' in st.session_state:
-        st.success("Kedua model (ARIMA dan NGARCH) telah dilatih! 🎉 Mereka siap bekerja sama.")
-        st.write("Sekarang Anda dapat melihat bagaimana mereka terintegrasi untuk prediksi. Lanjutkan ke halaman 'PREDIKSI'. ➡️")
+#     if 'model_arima_fit' in st.session_state and 'model_ngarch_fit' in st.session_state:
+#         st.success("Kedua model (ARIMA dan NGARCH) telah dilatih! 🎉 Mereka siap bekerja sama.")
+#         st.write("Sekarang Anda dapat melihat bagaimana mereka terintegrasi untuk prediksi. Lanjutkan ke halaman 'PREDIKSI'. ➡️")
 
-        st.info("Lanjutkan ke halaman 'PREDIKSI' untuk melihat hasil dan evaluasi model ARIMA-NGARCH. ➡️")
-    else:
-        st.warning("Pastikan Anda telah melatih model ARIMA dan NGARCH di halaman sebelumnya. ⚠️")
+#         st.info("Lanjutkan ke halaman 'PREDIKSI' untuk melihat hasil dan evaluasi model ARIMA-NGARCH. ➡️")
+#     else:
+#         st.warning("Pastikan Anda telah melatih model ARIMA dan NGARCH di halaman sebelumnya. ⚠️")
 
 
 elif st.session_state['current_page'] == 'prediksi':
@@ -808,10 +808,8 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
         st.markdown('<div class="interpretation-text">', unsafe_allow_html=True)
         if 'rmse_price' in st.session_state and 'mae_price' in st.session_state:
             st.write(f"**Prediksi Nilai Tukar ({st.session_state.get('selected_currency', '')}):**")
-            st.write(f"- RMSE (Root Mean Squared Error): {st.session_state['rmse_price']:.4f} 👇")
-            st.write(f"  RMSE adalah ukuran rata-rata seberapa jauh prediksi dari nilai aktual. Angka yang lebih kecil lebih baik. 🎯")
-            st.write(f"- MAE (Mean Absolute Error): {st.session_state['mae_price']:.4f} 👇")
-            st.write(f"  MAE adalah ukuran rata-rata besarnya kesalahan dalam prediksi, tanpa mempertimbangkan arah. Angka yang lebih kecil lebih baik. 📏")
+            st.write(f"RMSE (Root Mean Squared Error): {st.session_state['rmse_price']:.4f} 👇")
+            st.write(f"MAE (Mean Absolute Error): {st.session_state['mae_price']:.4f} 👇")
             st.write("Nilai RMSE dan MAE yang lebih rendah menunjukkan akurasi prediksi nilai tukar yang lebih baik. ✅")
         else:
             st.info("Silakan jalankan prediksi terlebih dahulu di halaman 'PREDIKSI' untuk melihat metrik evaluasi. ➡️")
