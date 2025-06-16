@@ -6,4 +6,4 @@ matplotlib
 plotly
 arch
 statsmodels
-streamlit
+scipy
