@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm # Untuk Ljung-Box, Jarque-Bera
 from scipy import stats # Untuk Jarque-Bera test
+from arch.univariate import ARX, NGARCH, Normal, StudentsT, SkewStudent
 
 # Impor model yang relevan
 from statsmodels.tsa.arima.model import ARIMA
@@ -595,6 +596,13 @@ elif st.session_state['current_page'] == 'arima_modeling_prediction':
                         # Start prediksi dari indeks setelah data latih terakhir
                         start_pred_idx_test = test_data_returns.index.min()
                         end_pred_idx_test = test_data_returns.index.max()
+                        # Start prediksi dari indeks setelah data latih terakhir
+                        start_pred_idx_test = test_data_returns.index.min()
+                        end_pred_idx_test = test_data_returns.index.max()
+
+                        # Prediksi out-of-sample return untuk data uji
+                        arima_forecast_returns_test = model_arima_fit.forecast(steps=len(test_data_returns))
+                        arima_forecast_returns_test.index = test_data_returns.index  # Beri indeks tanggal sesuai data uji
 
                         arima_forecast_returns_test = model_arima_fit.predict(start=start_pred_idx_test, end=end_pred_idx_test, typ='levels')
                         arima_forecast_returns_test = arima_forecast_returns_test.reindex(test_data_returns.index) # Sesuaikan indeks
@@ -701,100 +709,85 @@ elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
     if 'arima_residuals' in st.session_state and not st.session_state['arima_residuals'].empty:
         arima_residuals = st.session_state['arima_residuals'].dropna()
         
-        # --- MODEL NGARCH SECTION ---
-        st.markdown("<h3 class='section-header'>A. Pemodelan NGARCH (Volatilitas) ⚙️</h3>", unsafe_allow_html=True)
-        st.write(f"Residual dari model ARIMA ({st.session_state.get('selected_currency', '')}) (data untuk model NGARCH):")
-        st.dataframe(arima_residuals.head())
+    # --- MODEL NGARCH SECTION ---
+    st.markdown("<h3 class='section-header'>A. Pemodelan NGARCH (Volatilitas) ⚙️</h3>", unsafe_allow_html=True)
+    st.write(f"Residual dari model ARIMA ({st.session_state.get('selected_currency', '')}) (data untuk model NGARCH):")
+    st.dataframe(arima_residuals.head())
 
-        if arima_residuals.empty:
-            st.warning("Residual ARIMA kosong atau hanya berisi NaN. Pastikan model ARIMA berhasil dilatih dan menghasilkan residual yang valid. ⚠️")
-        else:
-            st.subheader("A.1. Tentukan Ordo NGARCH (p, o, q) dan Distribusi Error 🔢")
-            st.info("Pilih ordo p, o, q untuk model GARCH (p: ARCH order, o: asymmetry order, q: GARCH order). Ordo 'o' menangkap efek asimetris (leverage effect).")
-            p_garch = st.number_input("Ordo ARCH (p):", min_value=1, max_value=3, value=1, key="ngarch_p")
-            o_garch = st.number_input("Ordo Asymmetry (o):", min_value=0, max_value=2, value=1, key="ngarch_o")
-            q_garch = st.number_input("Ordo GARCH (q):", min_value=1, max_value=3, value=1, key="ngarch_q")
-            dist_garch = st.selectbox("Pilih Distribusi Error: 📉", ["normal", "t", "skewt"], index=1, key="ngarch_dist")
-
-            if st.button("A.2. Latih Model NGARCH ▶️", key="train_ngarch_button"):
-                try:
-                    with st.spinner("Melatih model NGARCH... ⏳"):
-                        model_ngarch = arch_model(arima_residuals, vol='Garch', p=p_garch, o=o_garch, q=q_garch, dist=dist_garch)
-                        res_ngarch = model_ngarch.fit(disp='off')
-
-                        st.session_state['model_ngarch_fit'] = res_ngarch
-                        st.success("Model NGARCH (GJR-GARCH) berhasil dilatih! 🎉")
-                        st.subheader("A.3. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
-                        st.text(res_ngarch.summary().as_text())
-
-                        st.subheader("A.4. Uji Signifikansi Koefisien (P-value) ✅❌")
-                        st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05.")
-                        
-                        # Mengambil tabel koefisien dari summary arch_model
-                        params_df = pd.DataFrame({
-                            'Parameter': res_ngarch.params.index,
-                            'Koefisien': res_ngarch.params.values,
-                            'P-value': res_ngarch.pvalues.values
-                        })
-                        st.dataframe(params_df[['Parameter', 'P-value']].style.applymap(lambda x: 'background-color: #d4edda' if isinstance(x, (int, float)) and x < 0.05 else 'background-color: #f8d7da', subset=['P-value']))
-                        st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
-
-                        st.subheader("A.5. Uji Asumsi Residual Baku Model NGARCH 📊")
-                        # Residual baku = residual / volatilitas kondisional
-                        std_residuals = res_ngarch.resid / res_ngarch.conditional_volatility
-                        st.session_state['ngarch_std_residuals'] = std_residuals.dropna()
-
-                        if not std_residuals.dropna().empty:
-                            # Plot Residual Baku
-                            st.write("##### Plot Residual Baku NGARCH")
-                            fig_std_res = go.Figure()
-                            fig_std_res.add_trace(go.Scatter(x=std_residuals.index, y=std_residuals, mode='lines', name='Residual Baku NGARCH', line=dict(color='#8c564b')))
-                            fig_std_res.update_layout(title_text=f'Residual Baku Model NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                            st.plotly_chart(fig_std_res)
-
-                            # Uji Normalitas (Jarque-Bera)
-                            st.write("##### Uji Normalitas (Jarque-Bera Test) pada Residual Baku")
-                            jb_test_std = stats.jarque_bera(std_residuals.dropna())
-                            st.write(f"Statistik Jarque-Bera: {jb_test_std[0]:.4f}")
-                            st.write(f"P-value: {jb_test_std[1]:.4f}")
-                            if jb_test_std[1] > 0.05:
-                                st.success("Residual baku **terdistribusi normal** (gagal tolak H0). ✅ (jarang untuk data keuangan)")
-                            else:
-                                st.warning("Residual baku **tidak terdistribusi normal** (tolak H0). ⚠️ Ini cukup umum untuk data keuangan.")
-                                st.info("Model GARCH dengan distribusi t-Student atau skew-t dapat membantu menangani *fat tails* dan *skewness*.")
-
-                            # Uji Autokorelasi (Ljung-Box Test) pada residual baku
-                            st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Baku")
-                            lb_std_test = sm.stats.acorr_ljungbox(std_residuals.dropna(), lags=[10], return_df=True)
-                            st.write(lb_std_test)
-                            if lb_std_test['lb_pvalue'].iloc[0] > 0.05:
-                                st.success("Residual baku **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅")
-                            else:
-                                st.warning("Residual baku **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model mungkin belum sepenuhnya menangkap dependensi mean.")
-
-                            # Uji Autokorelasi (Ljung-Box Test) pada residual baku kuadrat
-                            st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Baku Kuadrat (untuk sisa efek ARCH)")
-                            lb_std_sq_test = sm.stats.acorr_ljungbox(std_residuals.dropna()**2, lags=[10], return_df=True)
-                            st.write(lb_std_sq_test)
-                            if lb_std_sq_test['lb_pvalue'].iloc[0] > 0.05:
-                                st.success("Residual baku kuadrat **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅")
-                                st.info("Ini adalah indikasi bahwa model GARCH/NGARCH telah berhasil menangkap semua efek ARCH/GARCH dalam data.")
-                            else:
-                                st.warning("Residual baku kuadrat **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model mungkin belum sepenuhnya menangkap volatilitas kelompok (efek ARCH/GARCH).")
-                                st.info("Pertimbangkan ordo GARCH yang berbeda atau model volatilitas lain.")
-
-                        else:
-                            st.warning("Residual baku NGARCH kosong atau hanya berisi NaN. Tidak dapat melakukan uji asumsi. ⚠️")
-
-
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌")
-                    st.info("Pastikan residual ARIMA valid dan ordo NGARCH yang dipilih tepat. Mungkin ada masalah konvergensi. Coba ganti distribusi error jika model tidak konvergen. ⚠️")
-            else:
-                st.info("Klik 'A.2. Latih Model NGARCH' untuk memulai pemodelan. ➡️")
+    if arima_residuals.empty:
+        st.warning("Residual ARIMA kosong atau hanya berisi NaN. Pastikan model ARIMA berhasil dilatih dan menghasilkan residual yang valid. ⚠️")
     else:
-        st.info("Latih model ARIMA terlebih dahulu di halaman 'MODEL & PREDIKSI ARIMA' untuk mendapatkan residual. ⬆️")
+        st.subheader("A.1. Tentukan Ordo NGARCH (p, o, q) dan Distribusi Error 🔢")
+        st.info("Pilih ordo p, o, q untuk model NGARCH (p: ARCH order, o: asymmetry order, q: GARCH order). Ordo 'o' menangkap efek asimetris (leverage effect).")
+        p_ngarch = st.number_input("Ordo ARCH (p):", min_value=1, max_value=3, value=1, key="ngarch_p")
+        o_ngarch = st.number_input("Ordo Asymmetry (o):", min_value=0, max_value=2, value=1, key="ngarch_o")
+        q_ngarch = st.number_input("Ordo GARCH (q):", min_value=1, max_value=3, value=1, key="ngarch_q")
+        dist_ngarch = st.selectbox("Pilih Distribusi Error: 📉", ["normal", "t", "skewt"], index=1, key="ngarch_dist")
 
+        if st.button("A.2. Latih Model NGARCH ▶️", key="fit_ngarch_model_button"):
+            try:
+                with st.spinner("Melatih model NGARCH... ⏳"):
+                    model_ngarch = arch_model(arima_residuals, vol='NGARCH', p=p_ngarch, o=o_ngarch, q=q_ngarch, dist=dist_ngarch)
+                    res_ngarch = model_ngarch.fit(disp='off')
+
+                    st.session_state['model_ngarch_fit'] = res_ngarch
+                    st.success("Model NGARCH berhasil dilatih! 🎉")
+                    st.subheader("A.3. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
+                    st.text(res_ngarch.summary().as_text())
+
+                    st.subheader("A.4. Uji Signifikansi Koefisien (P-value) ✅❌")
+                    st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05.")
+
+                    params_df = pd.DataFrame({
+                        'Parameter': res_ngarch.params.index,
+                        'Koefisien': res_ngarch.params.values,
+                        'P-value': res_ngarch.pvalues.values
+                    })
+                    st.dataframe(params_df[['Parameter', 'P-value']].style.applymap(lambda x: 'background-color: #d4edda' if isinstance(x, (int, float)) and x < 0.05 else 'background-color: #f8d7da', subset=['P-value']))
+                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
+
+                    st.subheader("A.5. Uji Asumsi Residual Baku Model NGARCH 📊")
+                    std_residuals = res_ngarch.resid / res_ngarch.conditional_volatility
+                    st.session_state['ngarch_std_residuals'] = std_residuals.dropna()
+
+                    if not std_residuals.dropna().empty:
+                        st.write("##### Plot Residual Baku NGARCH")
+                        fig_std_res = go.Figure()
+                        fig_std_res.add_trace(go.Scatter(x=std_residuals.index, y=std_residuals, mode='lines', name='Residual Baku NGARCH', line=dict(color='#8c564b')))
+                        fig_std_res.update_layout(title_text=f'Residual Baku Model NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
+                        st.plotly_chart(fig_std_res)
+
+                        st.write("##### Uji Normalitas (Jarque-Bera Test) pada Residual Baku")
+                        jb_test_std = stats.jarque_bera(std_residuals.dropna())
+                        st.write(f"Statistik Jarque-Bera: {jb_test_std[0]:.4f}")
+                        st.write(f"P-value: {jb_test_std[1]:.4f}")
+                        if jb_test_std[1] > 0.05:
+                            st.success("Residual baku **terdistribusi normal** (gagal tolak H0). ✅")
+                        else:
+                            st.warning("Residual baku **tidak terdistribusi normal** (tolak H0). ⚠️")
+
+                        st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Baku")
+                        lb_std_test = sm.stats.acorr_ljungbox(std_residuals.dropna(), lags=[10], return_df=True)
+                        st.write(lb_std_test)
+                        if lb_std_test['lb_pvalue'].iloc[0] > 0.05:
+                            st.success("Residual baku **tidak memiliki autokorelasi** signifikan. ✅")
+                        else:
+                            st.warning("Residual baku **memiliki autokorelasi** signifikan. ⚠️")
+
+                        st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Baku Kuadrat")
+                        lb_std_sq_test = sm.stats.acorr_ljungbox(std_residuals.dropna()**2, lags=[10], return_df=True)
+                        st.write(lb_std_sq_test)
+                        if lb_std_sq_test['lb_pvalue'].iloc[0] > 0.05:
+                            st.success("Residual baku kuadrat **tidak memiliki autokorelasi** signifikan. ✅")
+                        else:
+                            st.warning("Residual baku kuadrat **memiliki autokorelasi** signifikan. ⚠️")
+                    else:
+                        st.warning("Residual baku NGARCH kosong atau hanya berisi NaN. ⚠️")
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌")
+        else:
+            st.info("Klik 'A.2. Latih Model NGARCH' untuk memulai pemodelan. ➡️")
 
     # --- PREDIKSI NGARCH SECTION ---
     st.markdown("<h3 class='section-header'>B. Prediksi NGARCH (Volatilitas) 🔮</h3>", unsafe_allow_html=True)
@@ -807,17 +800,10 @@ elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
             try:
                 with st.spinner("Melakukan prediksi volatilitas NGARCH... ⏳"):
                     model_ngarch_fit = st.session_state['model_ngarch_fit']
-                    # NGARCH forecast dari akhir data yang digunakan untuk melatih NGARCH (yaitu, residual ARIMA)
                     last_garch_obs_index = arima_residuals.index.max()
 
-                    total_forecast_horizon_vol = num_forecast_steps_vol
-                    
-                    forecast_res_ngarch_out = model_ngarch_fit.forecast(horizon=num_forecast_steps_vol,
-                                                                         start=last_garch_obs_index,
-                                                                         method='simulation', simulations=1000)
-                    
-                    conditional_variance_forecast_mean = forecast_res_ngarch_out.variance.mean.iloc[-1, :] 
-                    conditional_volatility_forecast = np.sqrt(conditional_variance_forecast_mean)
+                    forecast_res_ngarch_out = model_ngarch_fit.forecast(horizon=num_forecast_steps_vol, start=last_garch_obs_index, method='simulation', simulations=1000)
+                    conditional_volatility_forecast = np.sqrt(forecast_res_ngarch_out.variance.mean.iloc[-1, :])
 
                     if isinstance(last_garch_obs_index, pd.Timestamp):
                         future_vol_dates = pd.date_range(start=last_garch_obs_index + pd.Timedelta(days=1), periods=num_forecast_steps_vol, freq='D')
@@ -827,8 +813,6 @@ elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
                     volatility_forecast_series = pd.Series(conditional_volatility_forecast, index=future_vol_dates)
 
                     st.success("Prediksi volatilitas berhasil dilakukan! 🎉")
-
-                    # --- Visualisasi Hasil Prediksi Volatilitas ---
                     st.subheader(f"B.3. Prediksi Volatilitas (NGARCH) untuk {st.session_state.get('selected_currency', '')} 🌪️")
                     fig_volatility = go.Figure()
                     fig_volatility.add_trace(go.Scatter(x=model_ngarch_fit.conditional_volatility.index, y=model_ngarch_fit.conditional_volatility, mode='lines', name='Volatilitas Kondisional (Historis)', line=dict(color='#8c564b')))
@@ -837,9 +821,8 @@ elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
                     st.plotly_chart(fig_volatility)
 
                     st.session_state['last_forecast_volatility_ngarch'] = volatility_forecast_series.iloc[-1] if not volatility_forecast_series.empty else None
-                    st.session_state['volatility_forecast_series'] = volatility_forecast_series # Simpan untuk interpretasi
+                    st.session_state['volatility_forecast_series'] = volatility_forecast_series
 
-                    # Opsi untuk mengunduh prediksi
                     forecast_df_vol_to_save = pd.DataFrame({
                         f'Predicted_Volatility_{st.session_state.get("selected_currency", "")}': volatility_forecast_series
                     })
@@ -850,10 +833,8 @@ elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
                         mime='text/csv',
                     )
 
-
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat melakukan prediksi volatilitas: {e} ❌")
-                st.info("Harap periksa kembali langkah 'MODEL NGARCH' atau ordo model yang dipilih. Pastikan model telah dilatih dan data tersedia. ⚠️")
         else:
             st.info("Klik 'B.2. Lakukan Prediksi Volatilitas' untuk melihat hasil prediksi volatilitas. ➡️")
     else:
