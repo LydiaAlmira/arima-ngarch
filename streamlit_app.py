@@ -440,11 +440,18 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write(f"Pisahkan data return {st.session_state.get('selected_currency', '')} menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian akan dilakukan secara berurutan karena ini adalah data time series. 📏")
+    st.write(f"Pisahkan data menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
 
     if 'processed_returns' in st.session_state and not st.session_state['processed_returns'].empty:
         data_to_split = st.session_state['processed_returns']
-        st.write(f"Data return {st.session_state.get('selected_currency', '')} yang akan dibagi:")
+        currency_name = st.session_state.get('selected_currency', '')
+        d_value = st.session_state.get('d', 0)
+
+        st.write(f"Data yang telah stasioner dari {currency_name} (differencing ke-{d_value}) yang akan dibagi 📈:")
+
+        if d_value > 1:
+            st.warning(f"Data memerlukan differencing sebanyak {d_value} kali. ⚠️ Ini menunjukkan adanya non-stasioneritas kuat. Pertimbangkan untuk mengevaluasi kembali transformasi data atau model yang digunakan.")
+
         st.dataframe(data_to_split.head())
 
         st.subheader("Konfigurasi Pembagian Data ⚙️")
@@ -460,19 +467,18 @@ elif st.session_state['current_page'] == 'data_splitting':
             st.session_state['train_data_returns'] = train_data_returns
             st.session_state['test_data_returns'] = test_data_returns
 
-            st.success("Data return berhasil dibagi! ✅")
+            st.success("Data berhasil dibagi! ✅")
             st.write(f"Ukuran data pelatihan: {len(train_data_returns)} sampel 💪")
             st.write(f"Ukuran data pengujian: {len(test_data_returns)} sampel 🧪")
 
-            st.subheader(f"Visualisasi Pembagian Data Return {st.session_state.get('selected_currency', '')} 📈📉")
+            st.subheader(f"Visualisasi Pembagian Data {currency_name} 📈📉")
             fig_split = go.Figure()
             fig_split.add_trace(go.Scatter(x=train_data_returns.index, y=train_data_returns.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
             fig_split.add_trace(go.Scatter(x=test_data_returns.index, y=test_data_returns.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
-            fig_split.update_layout(title_text=f'Pembagian Data Return {st.session_state.get("selected_currency", "")} Time Series', xaxis_rangeslider_visible=True)
+            fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
             st.plotly_chart(fig_split)
     else:
-        st.warning("Tidak ada data return yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data' dan 'Data Preprocessing'. ⚠️⬆️")
-
+        st.warning("Tidak ada data yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data', 'Preprocessing', dan 'Stasioneritas Data'. ⚠️⬆️")
 
 elif st.session_state['current_page'] == 'pemodelan_arima':
     st.markdown('<div class="main-header">MODEL ARIMA (Mean Equation) ⚙️📈</div>', unsafe_allow_html=True)
