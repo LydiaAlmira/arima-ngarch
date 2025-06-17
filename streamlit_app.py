@@ -386,6 +386,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     st.success("Data **stasioner** (tolak H0: ada akar unit). ✅")
                     st.session_state['is_stationary_adf'] = True
                     st.session_state['final_series'] = series_to_test
+                    st.session_state['processed_returns'] = series_to_test
                 else:
                     st.warning("Data **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
                     st.info("Akan dilakukan transformasi differencing secara otomatis... 🔄")
@@ -409,6 +410,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                         st.success("Setelah differencing, data menjadi **stasioner**. ✅") 
                         st.session_state['is_stationary_adf'] = True
                         st.session_state['final_series'] = differenced
+                        st.session_state['processed_returns'] = differenced 
                     else:
                         st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
                         st.info("Mungkin dibutuhkan differencing lebih lanjut atau transformasi lain.")
@@ -416,7 +418,9 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e} ❌ Pastikan data numerik dan tidak memiliki nilai tak terbatas/NaN.")
-
+    else:
+        st.warning("Silakan lakukan 'Preprocessing' terlebih dahulu. ⚠️")
+        
         st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
         st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
 
