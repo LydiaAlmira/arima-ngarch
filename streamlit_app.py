@@ -359,44 +359,6 @@ elif st.session_state['current_page'] == 'data_preprocessing':
         else:
             st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
 
-        st.subheader("Transformasi Data: Harga ke Return 💰➡️📊")
-        return_type = st.radio("Pilih tipe return:", ("Log Return", "Simple Return"), key="return_type_radio")
-
-        if st.button("Hitung Return ▶️", key="calculate_return_button"):
-            if len(series_data) > 1:
-                processed_series = pd.Series([], dtype=float)
-                if return_type == "Log Return":
-                    processed_series = np.log(series_data / series_data.shift(1))
-                    st.info("Data telah diubah menjadi Log Return. 📈")
-                else:
-                    processed_series = series_data.pct_change()
-                    st.info("Data telah diubah menjadi Simple Return (Persentase Perubahan). 💹")
-
-                processed_series = processed_series.replace([np.inf, -np.inf], np.nan).dropna()
-
-                if not processed_series.empty:
-                    st.session_state['processed_returns'] = processed_series
-                    st.session_state['original_prices_for_reconstruction'] = series_data
-                    st.session_state['return_type'] = return_type
-                    st.success("Data return berhasil dihitung! 🎉 Siap untuk analisis selanjutnya.")
-                    st.write("5 baris pertama data return:")
-                    st.dataframe(processed_series.head())
-
-                    st.subheader(f"Visualisasi Data Return: {st.session_state['selected_currency']} 📉")
-                    fig_returns = go.Figure()
-                    fig_returns.add_trace(go.Scatter(x=processed_series.index, y=processed_series, mode='lines', name='Data Return', line=dict(color='#82c0cc')))
-                    fig_returns.update_layout(title_text=f'Grafik Data Return {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
-                    st.plotly_chart(fig_returns)
-                else:
-                    st.warning("Data return kosong setelah transformasi. Pastikan data input Anda valid. ⚠️")
-            else:
-                st.warning("Data terlalu pendek untuk menghitung return. Minimal 2 observasi dibutuhkan. 🤏")
-        else:
-            st.info("Klik 'Hitung Return' untuk melanjutkan ke transformasi data. ➡️")
-    else:
-        st.info("Unggah data nilai tukar terlebih dahulu di bagian 'Input Data' dan pilih mata uang untuk melakukan preprocessing. ⬆️")
-
-
 elif st.session_state['current_page'] == 'stasioneritas_data':
     st.markdown('<div class="main-header">Stasioneritas Data Return 📊🧪</div>', unsafe_allow_html=True)
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data return {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
