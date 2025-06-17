@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import math
 from statsmodels.tsa.stattools import adfuller
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacff
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ import statsmodels.api as sm # Untuk Ljung-Box, Jarque-Bera
 from scipy import stats # Untuk Jarque-Bera test
 from arch.univariate import ARX, NGARCH, Normal, StudentsT, SkewStudent # Menggunakan NGARCH sesuai permintaan
 from statsmodels.tsa.arima.model import ARIMA
-from arch import arch_model
+from arch import arch_model # Corrected typo: arch_modelfrom -> from arch import arch_model
 from statsmodels.stats.diagnostic import het_arch # Untuk uji ARCH
 
 # --- Konfigurasi Halaman (Hanya dipanggil sekali di awal) ---
@@ -183,54 +183,81 @@ menu_items = {
 # Inisialisasi st.session_state jika belum ada
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'home'
+
 if 'selected_currency' not in st.session_state:
     st.session_state['selected_currency'] = None
+
 if 'variable_name' not in st.session_state:
     st.session_state['variable_name'] = "Nama Variabel"
+
 if 'df_currency_raw_multi' not in st.session_state:
     st.session_state['df_currency_raw_multi'] = pd.DataFrame()
+
 if 'df_currency_raw' not in st.session_state:
     st.session_state['df_currency_raw'] = pd.DataFrame()
-if 'processed_returns' not in st.session_state:
-    st.session_state['processed_returns'] = pd.Series()
-if 'original_prices_for_reconstruction' not in st.session_state:
-    st.session_state['original_prices_for_reconstruction'] = pd.Series()
-if 'return_type' not in st.session_state:
-    st.session_state['return_type'] = "Log Return"
-if 'train_data_returns' not in st.session_state:
-    st.session_state['train_data_returns'] = pd.Series()
-if 'test_data_returns' not in st.session_state:
-    st.session_state['test_data_returns'] = pd.Series()
+
+if 'cleaned_original_data' not in st.session_state: # New state for cleaned original data
+    st.session_state['cleaned_original_data'] = pd.Series()
+
+# Removed processed_returns, original_prices_for_reconstruction, return_type as they are no longer used this way
+if 'processed_returns' in st.session_state:
+    del st.session_state['processed_returns']
+if 'original_prices_for_reconstruction' in st.session_state:
+    del st.session_state['original_prices_for_reconstruction']
+if 'return_type' in st.session_state:
+    del st.session_state['return_type']
+
+if 'train_data_prices' not in st.session_state: # Renamed from train_data_returns
+    st.session_state['train_data_prices'] = pd.Series()
+
+if 'test_data_prices' not in st.session_state: # Renamed from test_data_returns
+    st.session_state['test_data_prices'] = pd.Series()
+
 if 'model_arima_fit' not in st.session_state:
     st.session_state['model_arima_fit'] = None
+
 if 'arima_residuals' not in st.session_state:
     st.session_state['arima_residuals'] = pd.Series()
+
 if 'arima_residual_has_arch_effect' not in st.session_state:
     st.session_state['arima_residual_has_arch_effect'] = None # Untuk menyimpan hasil uji ARCH pada residual ARIMA
+
 if 'model_ngarch_fit' not in st.session_state:
     st.session_state['model_ngarch_fit'] = None
+
 if 'last_forecast_price_arima' not in st.session_state:
     st.session_state['last_forecast_price_arima'] = None
+
 if 'future_predicted_prices_series' not in st.session_state:
     st.session_state['future_predicted_prices_series'] = pd.Series()
+
 if 'predicted_prices_series' not in st.session_state:
     st.session_state['predicted_prices_series'] = pd.Series()
+
 if 'rmse_price_arima' not in st.session_state:
     st.session_state['rmse_price_arima'] = None
+
 if 'mae_price_arima' not in st.session_state:
     st.session_state['mae_price_arima'] = None
+
 if 'mape_price_arima' not in st.session_state:
     st.session_state['mape_price_arima'] = None
+
 if 'last_forecast_volatility_ngarch' not in st.session_state:
     st.session_state['last_forecast_volatility_ngarch'] = None
+
 if 'future_predicted_volatility_series' not in st.session_state:
     st.session_state['future_predicted_volatility_series'] = pd.Series()
+
 if 'predicted_volatility_series' not in st.session_state:
     st.session_state['predicted_volatility_series'] = pd.Series()
+
 if 'rmse_vol_ngarch' not in st.session_state:
     st.session_state['rmse_vol_ngarch'] = None
+
 if 'mae_vol_ngarch' not in st.session_state:
     st.session_state['mae_vol_ngarch'] = None
+
 if 'mape_vol_ngarch' not in st.session_state:
     st.session_state['mape_vol_ngarch'] = None
 
@@ -254,10 +281,10 @@ if st.session_state['current_page'] == 'home':
     <ul>
         <li><b>HOME 🏠:</b> Halaman utama yang menjelaskan tujuan dan metode prediksi sistem.</li>
         <li><b>INPUT DATA 📥:</b> Unggah data time series nilai tukar mata uang.</li>
-        <li><b>DATA PREPROCESSING 🧹:</b> Lakukan pembersihan dan transformasi data (misalnya, menghitung return).</li>
-        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas data return dan periksa autokorelasi.</li>
-        <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi latih dan uji.</li>
-        <li><b>MODEL & PREDIKSI ARIMA 📈🔮:</b> Langkah-langkah untuk membentuk model ARIMA pada data return (untuk prediksi nilai tukar), termasuk uji asumsi, koefisien, dan hasil prediksi.</li>
+        <li><b>DATA PREPROCESSING 🧹:</b> Lakukan pembersihan data dari missing values dan nilai nol/negatif.</li>
+        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas data harga awal dan periksa autokorelasi.</li>
+        <li><b>DATA SPLITTING ✂️:</b> Pisahkan data harga awal menjadi latih dan uji.</li>
+        <li><b>MODEL & PREDIKSI ARIMA 📈🔮:</b> Langkah-langkah untuk membentuk model ARIMA pada data harga awal (untuk prediksi nilai tukar), termasuk uji asumsi, koefisien, dan hasil prediksi.</li>
         <li><b>MODEL & PREDIKSI NGARCH 🌪️🔮:</b> Langkah-langkah untuk membentuk model NGARCH pada residual ARIMA (untuk prediksi volatilitas), termasuk uji asumsi, koefisien, dan hasil prediksi.</li>
         <li><b>INTERPRETASI & SARAN 💡:</b> Penjelasan hasil model dan rekomendasi.</li>
     </ul>
@@ -345,14 +372,14 @@ elif st.session_state['current_page'] == 'input_data':
 
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
-    st.write("Lakukan pembersihan dan transformasi data nilai tukar. Untuk model ARIMA-NGARCH, kita perlu mengubah data harga menjadi return (perubahan logaritmik atau persentase). ✨")
+    st.write("Lakukan pembersihan data nilai tukar. Bagian ini hanya fokus pada penanganan nilai yang hilang dan nilai nol/negatif. ✨")
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         df_raw = st.session_state['df_currency_raw'].copy()
         st.write(f"Data nilai tukar mentah untuk {st.session_state.get('selected_currency', '')}: 📊")
         st.dataframe(df_raw.head())
 
-        st.subheader("Pilih Kolom Data dan Transformasi 🔄")
+        st.subheader("Pilih Kolom Data dan Penanganan 🔄")
 
         series_data = df_raw['Value']
 
@@ -385,7 +412,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
         st.markdown("##### Penanganan Nilai Nol atau Negatif 🚨")
         zero_or_negative_values = series_data[series_data <= 0]
         if not zero_or_negative_values.empty:
-            st.warning(f"Terdapat {len(zero_or_negative_values)} nilai nol atau negatif dalam data Anda. Ini akan menyebabkan masalah saat menghitung return logaritmik atau persentase. ❗")
+            st.warning(f"Terdapat {len(zero_or_negative_values)} nilai nol atau negatif dalam data Anda. Ini dapat menyebabkan masalah di langkah selanjutnya. ❗")
             clean_strategy = st.selectbox("Pilih strategi penanganan nilai nol/negatif:",
                                           ["Hapus baris tersebut", "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)"],
                                           key="clean_strategy")
@@ -397,52 +424,30 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                 series_data = series_data.apply(lambda x: 1e-6 if x < 1e-6 else x)
                 st.info("Nilai nol atau negatif telah diganti dengan 1e-6. ✅")
         else:
-            st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
+            st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data bersih!")
 
-        st.subheader("Transformasi Data: Harga ke Return 💰➡️📊")
-        return_type = st.radio("Pilih tipe return:", ("Log Return", "Simple Return"), key="return_type_radio")
+        # Store the cleaned original data in session_state
+        if st.button("Selesaikan Preprocessing ▶️", key="finish_preprocessing_button"):
+            st.session_state['cleaned_original_data'] = series_data
+            st.success("Data harga mentah telah dibersihkan! 🎉 Siap untuk uji stasioneritas.")
+            st.write("5 baris pertama data harga yang telah dibersihkan:")
+            st.dataframe(series_data.head())
 
-        if st.button("Hitung Return ▶️", key="calculate_return_button"):
-            if len(series_data) > 1:
-                processed_series = pd.Series([], dtype=float)
-                if return_type == "Log Return":
-                    processed_series = np.log(series_data / series_data.shift(1))
-                    st.info("Data telah diubah menjadi Log Return. 📈")
-                else:
-                    processed_series = series_data.pct_change()
-                    st.info("Data telah diubah menjadi Simple Return (Persentase Perubahan). 💹")
-
-                processed_series = processed_series.replace([np.inf, -np.inf], np.nan).dropna()
-
-                if not processed_series.empty:
-                    st.session_state['processed_returns'] = processed_series
-                    st.session_state['original_prices_for_reconstruction'] = series_data
-                    st.session_state['return_type'] = return_type
-                    st.success("Data return berhasil dihitung! 🎉 Siap untuk analisis selanjutnya.")
-                    st.write("5 baris pertama data return:")
-                    st.dataframe(processed_series.head())
-
-                    st.subheader(f"Visualisasi Data Return: {st.session_state['selected_currency']} 📉")
-                    fig_returns = go.Figure()
-                    fig_returns.add_trace(go.Scatter(x=processed_series.index, y=processed_series, mode='lines', name='Data Return', line=dict(color='#82c0cc')))
-                    fig_returns.update_layout(title_text=f'Grafik Data Return {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
-                    st.plotly_chart(fig_returns)
-                else:
-                    st.warning("Data return kosong setelah transformasi. Pastikan data input Anda valid. ⚠️")
-            else:
-                st.warning("Data terlalu pendek untuk menghitung return. Minimal 2 observasi dibutuhkan. 🤏")
-        else:
-            st.info("Klik 'Hitung Return' untuk melanjutkan ke transformasi data. ➡️")
+            st.subheader(f"Visualisasi Data Harga yang Telah Dibersihkan: {st.session_state['selected_currency']} 📈")
+            fig_cleaned = go.Figure()
+            fig_cleaned.add_trace(go.Scatter(x=series_data.index, y=series_data, mode='lines', name='Harga Dibersihkan', line=dict(color='#5d8aa8')))
+            fig_cleaned.update_layout(title_text=f'Grafik Harga {st.session_state["selected_currency"]} Setelah Preprocessing', xaxis_rangeslider_visible=True)
+            st.plotly_chart(fig_cleaned)
     else:
         st.info("Unggah data nilai tukar terlebih dahulu di bagian 'Input Data' dan pilih mata uang untuk melakukan preprocessing. ⬆️")
 
 elif st.session_state['current_page'] == 'stasioneritas_data':
-    st.markdown('<div class="main-header">Stasioneritas Data Return 📊🧪</div>', unsafe_allow_html=True)
-    st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data return {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
+    st.markdown('<div class="main-header">Stasioneritas Data Harga Awal 📊🧪</div>', unsafe_allow_html=True)
+    st.write(f"Untuk pemodelan time series, data harus stasioner atau dibuat stasioner melalui differencing. Kita akan menguji stasioneritas pada data harga awal {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
 
-    if 'processed_returns' in st.session_state and not st.session_state['processed_returns'].empty:
-        series_to_test = st.session_state['processed_returns']
-        st.write(f"5 baris pertama data return {st.session_state.get('selected_currency', '')} yang akan diuji:")
+    if 'cleaned_original_data' in st.session_state and not st.session_state['cleaned_original_data'].empty:
+        series_to_test = st.session_state['cleaned_original_data']
+        st.write(f"5 baris pertama data harga {st.session_state.get('selected_currency', '')} yang akan diuji:")
         st.dataframe(series_to_test.head())
 
         st.subheader("Uji Augmented Dickey-Fuller (ADF) 🤔")
@@ -457,44 +462,44 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     st.write(f"  {key}: {value:.4f}")
 
                 if result_adf[1] <= 0.05:
-                    st.success("Data return **stasioner** (tolak H0: ada akar unit). Ini adalah hasil yang baik! ✅")
+                    st.success("Data harga **stasioner** (tolak H0: ada akar unit). ✅ Ini jarang terjadi untuk harga mentah.")
                     st.session_state['is_stationary_adf'] = True
                 else:
-                    st.warning("Data return **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
-                    st.info("Meskipun data return seringkali stasioner, jika tidak, Anda mungkin perlu transformasi tambahan (misalnya, differencing pada return, yang jarang terjadi).")
+                    st.warning("Data harga **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
+                    st.info("Ini adalah hasil yang umum untuk data harga. Model ARIMA akan menangani ini dengan differencing (ordo 'd' > 0).")
                     st.session_state['is_stationary_adf'] = False
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e} ❌ Pastikan data numerik dan tidak memiliki nilai tak terbatas/NaN.")
 
         st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
-        st.info("Plot ACF menunjukkan korelasi antara observasi dan observasi sebelumnya pada berbagai lag. Plot PACF menunjukkan korelasi parsial, setelah menghilangkan pengaruh korelasi dari lag yang lebih pendek. Ini membantu dalam menentukan ordo p dan q untuk model ARIMA.")
+        st.info("Plot ACF menunjukkan korelasi antara observasi dan observasi sebelumnya pada berbagai lag. Plot PACF menunjukkan korelasi parsial, setelah menghilangkan pengaruh korelasi dari lag yang lebih pendek. Ini membantu dalam menentukan ordo p dan q untuk model ARIMA, serta ordo differencing 'd' jika data tidak stasioner (seringkali ACF meluruh lambat dan PACF *cut off* di lag 1 untuk d=1).")
         
         lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
         
         if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
             try:
                 fig_acf = plot_acf(series_to_test, lags=lags, alpha=0.05)
-                plt.title(f'ACF {st.session_state.get("selected_currency", "")} Returns')
+                plt.title(f'ACF {st.session_state.get("selected_currency", "")} Harga Awal')
                 st.pyplot(fig_acf)
 
                 fig_pacf = plot_pacf(series_to_test, lags=lags, alpha=0.05)
-                plt.title(f'PACF {st.session_state.get("selected_currency", "")} Returns')
+                plt.title(f'PACF {st.session_state.get("selected_currency", "")} Harga Awal')
                 st.pyplot(fig_pacf)
 
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌ Pastikan data tidak kosong.")
     else:
-        st.info("Silakan unggah dan proses data (hitung return) terlebih dahulu di halaman 'Input Data' dan 'Data Preprocessing'. ⬆️")
+        st.info("Silakan unggah dan bersihkan data terlebih dahulu di halaman 'Input Data' dan 'Data Preprocessing'. ⬆️")
 
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write(f"Pisahkan data return {st.session_state.get('selected_currency', '')} menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian akan dilakukan secara berurutan karena ini adalah data time series. 📏")
+    st.write(f"Pisahkan data harga awal {st.session_state.get('selected_currency', '')} menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian akan dilakukan secara berurutan karena ini adalah data time series. 📏")
 
-    if 'processed_returns' in st.session_state and not st.session_state['processed_returns'].empty:
-        data_to_split = st.session_state['processed_returns']
-        st.write(f"Data return {st.session_state.get('selected_currency', '')} yang akan dibagi:")
+    if 'cleaned_original_data' in st.session_state and not st.session_state['cleaned_original_data'].empty:
+        data_to_split = st.session_state['cleaned_original_data']
+        st.write(f"Data harga awal {st.session_state.get('selected_currency', '')} yang akan dibagi:")
         st.dataframe(data_to_split.head())
 
         st.subheader("Konfigurasi Pembagian Data ⚙️")
@@ -504,53 +509,51 @@ elif st.session_state['current_page'] == 'data_splitting':
 
         if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
             train_size = int(len(data_to_split) * (1 - test_size_frac))
-            train_data_returns = data_to_split.iloc[:train_size]
-            test_data_returns = data_to_split.iloc[train_size:]
+            train_data_prices = data_to_split.iloc[:train_size]
+            test_data_prices = data_to_split.iloc[train_size:]
 
-            st.session_state['train_data_returns'] = train_data_returns
-            st.session_state['test_data_returns'] = test_data_returns
+            st.session_state['train_data_prices'] = train_data_prices
+            st.session_state['test_data_prices'] = test_data_prices
 
-            st.success("Data return berhasil dibagi! ✅")
-            st.write(f"Ukuran data pelatihan: {len(train_data_returns)} sampel 💪")
-            st.write(f"Ukuran data pengujian: {len(test_data_returns)} sampel 🧪")
+            st.success("Data harga berhasil dibagi! ✅")
+            st.write(f"Ukuran data pelatihan: {len(train_data_prices)} sampel 💪")
+            st.write(f"Ukuran data pengujian: {len(test_data_prices)} sampel 🧪")
 
-            st.subheader(f"Visualisasi Pembagian Data Return {st.session_state.get('selected_currency', '')} 📈📉")
+            st.subheader(f"Visualisasi Pembagian Data Harga {st.session_state.get('selected_currency', '')} Time Series 📈📉")
             fig_split = go.Figure()
-            fig_split.add_trace(go.Scatter(x=train_data_returns.index, y=train_data_returns.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
-            fig_split.add_trace(go.Scatter(x=test_data_returns.index, y=test_data_returns.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
-            fig_split.update_layout(title_text=f'Pembagian Data Return {st.session_state.get("selected_currency", "")} Time Series', xaxis_rangeslider_visible=True)
+            fig_split.add_trace(go.Scatter(x=train_data_prices.index, y=train_data_prices.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
+            fig_split.add_trace(go.Scatter(x=test_data_prices.index, y=test_data_prices.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
+            fig_split.update_layout(title_text=f'Pembagian Data Harga {st.session_state.get("selected_currency", "")} Time Series', xaxis_rangeslider_visible=True)
             st.plotly_chart(fig_split)
     else:
-        st.warning("Tidak ada data return yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data' dan 'Data Preprocessing'. ⚠️⬆️")
+        st.warning("Tidak ada data harga yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data' dan 'Data Preprocessing'. ⚠️⬆️")
 
 elif st.session_state['current_page'] == 'arima_modeling_prediction':
     st.markdown('<div class="main-header">MODEL & PREDIKSI ARIMA 📈🔮</div>', unsafe_allow_html=True)
-    st.write(f"Latih model ARIMA pada data return {st.session_state.get('selected_currency', '')} untuk memodelkan mean (prediksi nilai tukar), lalu lakukan prediksi. 📊")
+    st.write(f"Latih model ARIMA pada data harga awal {st.session_state.get('selected_currency', '')} untuk memodelkan mean (prediksi nilai tukar), lalu lakukan prediksi. 📊")
 
     # Pastikan variabel-variabel ini tersedia di session_state dari halaman sebelumnya
-    train_data_returns = st.session_state.get('train_data_returns', pd.Series())
-    test_data_returns = st.session_state.get('test_data_returns', pd.Series())
-    original_prices_series = st.session_state.get('original_prices_for_reconstruction', pd.Series())
-    return_type = st.session_state.get('return_type', "Log Return")
+    train_data_prices = st.session_state.get('train_data_prices', pd.Series())
+    test_data_prices = st.session_state.get('test_data_prices', pd.Series())
 
-    if not train_data_returns.empty and not test_data_returns.empty and not original_prices_series.empty:
+    if not train_data_prices.empty and not test_data_prices.empty:
         # --- MODEL ARIMA SECTION ---
         st.markdown("<h3 class='section-header'>A. Pemodelan ARIMA (Mean Equation) ⚙️</h3>", unsafe_allow_html=True)
-        st.write(f"Data pelatihan return untuk pemodelan ARIMA ({st.session_state.get('selected_currency', '')}):")
-        st.dataframe(train_data_returns.head())
+        st.write(f"Data pelatihan harga awal untuk pemodelan ARIMA ({st.session_state.get('selected_currency', '')}):")
+        st.dataframe(train_data_prices.head())
 
         st.subheader("A.1. Pilih Ordo ARIMA (p, d, q) 🔢")
-        st.info("Pilih kombinasi ordo ARIMA yang telah ditentukan. Ordo differencing (d) akan otomatis diatur ke 0 karena Anda bekerja dengan data return yang diharapkan stasioner.")
+        st.info("Pilih kombinasi ordo ARIMA yang telah ditentukan. Ordo differencing (d) akan digunakan untuk membuat data stasioner jika diperlukan.")
 
         arima_orders_options = {
-            "ARIMA (1,1,1)": (1, 0, 1),
-            "ARIMA (0,1,1)": (0, 0, 1),
-            "ARIMA (1,1,0)": (1, 0, 0),
-            "ARIMA (2,1,0)": (2, 0, 0),
-            "ARIMA (0,1,2)": (0, 0, 2),
-            "ARIMA (2,1,1)": (2, 0, 1),
-            "ARIMA (1,1,2)": (1, 0, 2),
-            "ARIMA (2,1,2)": (2, 0, 2)
+            "ARIMA (1,1,1)": (1, 1, 1),
+            "ARIMA (0,1,1)": (0, 1, 1),
+            "ARIMA (1,1,0)": (1, 1, 0),
+            "ARIMA (2,1,0)": (2, 1, 0),
+            "ARIMA (0,1,2)": (0, 1, 2),
+            "ARIMA (2,1,1)": (2, 1, 1),
+            "ARIMA (1,1,2)": (1, 1, 2),
+            "ARIMA (2,1,2)": (2, 1, 2)
         }
         
         selected_arima_label = st.selectbox(
@@ -559,7 +562,6 @@ elif st.session_state['current_page'] == 'arima_modeling_prediction':
             key="arima_model_selector"
         )
         
-        # Get the p, d, q values from the selected label
         p, d, q = arima_orders_options[selected_arima_label]
         
         st.write(f"Ordo ARIMA yang dipilih: **p={p}, d={d}, q={q}**")
@@ -567,11 +569,11 @@ elif st.session_state['current_page'] == 'arima_modeling_prediction':
         if st.button("A.2. Latih Model ARIMA ▶️", key="train_arima_button"):
             try:
                 with st.spinner("Melatih model ARIMA... ⏳"):
-                    model_arima = ARIMA(train_data_returns, order=(p, d, q))
+                    model_arima = ARIMA(train_data_prices, order=(p, d, q))
                     model_arima_fit = model_arima.fit()
 
                     st.session_state['model_arima_fit'] = model_arima_fit
-                    st.session_state['arima_residuals'] = pd.Series(model_arima_fit.resid, index=train_data_returns.index)
+                    st.session_state['arima_residuals'] = pd.Series(model_arima_fit.resid, index=train_data_prices.index)
                     st.success("Model ARIMA berhasil dilatih! 🎉")
                     
                     st.subheader("A.3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
@@ -581,479 +583,297 @@ elif st.session_state['current_page'] == 'arima_modeling_prediction':
                     st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05 (pada tingkat kepercayaan 95%).")
                     
                     model_summary = model_arima_fit.summary()
-                    # Ensure tables exist and get the correct table (usually the second one for parameters)
-                    if len(model_summary.tables) > 1:
-                        results_table_html = model_summary.tables[1].as_html()  
-                        df_results = pd.read_html(results_table_html, header=0, index_col=0)[0]
-                        st.dataframe(df_results[['P>|z|']].style.applymap(lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
+                    # Ensure tables exist
+                    if hasattr(model_summary, 'tables') and len(model_summary.tables) > 1:
+                        params_table = model_summary.tables[1]
+                        st.dataframe(params_table)
                     else:
-                        st.warning("Tidak dapat menampilkan tabel signifikansi koefisien. Ringkasan model mungkin tidak memiliki format yang diharapkan. 🙁")
+                        st.info("Tidak dapat menampilkan tabel koefisien secara rinci. Silakan lihat ringkasan model di atas.")
 
-                    st.subheader("A.5. Analisis Residual ARIMA (Uji Asumsi) 🔬")
-                    st.info("Residual model ARIMA harus menyerupai deret white noise (tidak berkorelasi) dan berdistribusi normal. Kehadiran autokorelasi atau heteroskedastisitas pada residual menunjukkan bahwa model ARIMA belum sepenuhnya menangkap seluruh struktur data, dan mungkin memerlukan model GARCH untuk volatilitas.")
+                    # --- PREDIKSI HARGA DENGAN ARIMA ---
+                    st.markdown("<h3 class='section-header'>B. Prediksi Harga dengan ARIMA 📈🔮</h3>", unsafe_allow_html=True)
+                    st.info("Prediksi harga akan dilakukan pada data pengujian. Karena model ARIMA dilatih pada data harga awal dengan differencing (d>0), prediksi secara otomatis akan direkonstruksi ke skala harga asli.")
 
-                    residuals = st.session_state['arima_residuals']
-                    if not residuals.empty:
-                        # Plot Residual
-                        st.write("##### Plot Residual ARIMA 📉")
-                        fig_res = go.Figure()
-                        fig_res.add_trace(go.Scatter(x=residuals.index, y=residuals, mode='lines', name='Residual', line=dict(color='#8856a7')))
-                        fig_res.update_layout(title_text='Residual Model ARIMA', xaxis_rangeslider_visible=True)
-                        st.plotly_chart(fig_res)
+                    # Fitted values on training data
+                    fitted_values_arima = model_arima_fit.predict(start=0, end=len(train_data_prices)-1, typ='levels')
+                    fitted_values_arima.name = 'Fitted Values'
 
-                        col_res_1, col_res_2 = st.columns(2)
+                    # Forecast on test data
+                    forecast_steps = len(test_data_prices)
+                    forecast_arima = model_arima_fit.forecast(steps=forecast_steps, typ='levels')
+                    forecast_arima.index = test_data_prices.index # Assign test data index to forecast
 
-                        with col_res_1:
-                            st.write("##### Uji White Noise (Ljung-Box) 🧪")
-                            st.info("Menguji apakah residual tidak memiliki autokorelasi yang signifikan. P-value < 0.05 menunjukkan adanya autokorelasi, yang berarti model belum optimal.")
-                            try:
-                                lb_test = sm.stats.acorr_ljungbox(residuals, lags=[10], return_df=True)
-                                st.write(f"**P-value Ljung-Box (lag 10):** {lb_test['lb_pvalue'].iloc[0]:.4f}")
-                                if lb_test['lb_pvalue'].iloc[0] < 0.05:
-                                    st.warning("Residual **tidak menyerupai white noise** (ada autokorelasi). Model ARIMA mungkin perlu disempurnakan. ⚠️")
-                                else:
-                                    st.success("Residual **menyerupai white noise** (tidak ada autokorelasi signifikan). 👍")
-                            except Exception as e:
-                                st.error(f"Gagal menjalankan Uji Ljung-Box: {e} ❌")
+                    st.session_state['last_forecast_price_arima'] = forecast_arima.iloc[-1]
+                    st.session_state['future_predicted_prices_series'] = forecast_arima # This is the out-of-sample forecast
 
-                        with col_res_2:
-                            st.write("##### Uji Normalitas (Jarque-Bera) 🔔")
-                            st.info("Menguji apakah residual berdistribusi normal. P-value < 0.05 menunjukkan non-normalitas (residual mungkin tidak normal).")
-                            try:
-                                jb_test = stats.jarque_bera(residuals)
-                                st.write(f"**Statistik JB:** {jb_test[0]:.4f}")
-                                st.write(f"**P-value JB:** {jb_test[1]:.4f}")
-                                if jb_test[1] < 0.05:
-                                    st.warning("Residual **tidak berdistribusi normal**. Ini umum dalam data keuangan dan menunjukkan volatilitas (perlu GARCH). ⚠️")
-                                else:
-                                    st.success("Residual **berdistribusi normal**. 👍")
-                            except Exception as e:
-                                st.error(f"Gagal menjalankan Uji Jarque-Bera: {e} ❌")
+                    # Combine fitted values and forecast for plotting
+                    combined_predictions_index = train_data_prices.index.append(test_data_prices.index)
+                    predicted_prices_series = pd.concat([fitted_values_arima, forecast_arima])
+                    predicted_prices_series = predicted_prices_series.reindex(combined_predictions_index) # Ensure correct indexing
+
+                    st.session_state['predicted_prices_series'] = predicted_prices_series
+
+                    # Visualisasi Prediksi Harga
+                    st.subheader("B.1. Grafik Harga Aktual vs. Prediksi ARIMA 📊")
+                    fig_price_pred = go.Figure()
+                    fig_price_pred.add_trace(go.Scatter(x=train_data_prices.index, y=train_data_prices, mode='lines', name='Harga Latih Aktual', line=dict(color='blue')))
+                    fig_price_pred.add_trace(go.Scatter(x=test_data_prices.index, y=test_data_prices, mode='lines', name='Harga Uji Aktual', line=dict(color='green')))
+                    fig_price_pred.add_trace(go.Scatter(x=predicted_prices_series.index, y=predicted_prices_series, mode='lines', name='Prediksi ARIMA', line=dict(color='red', dash='dash')))
+                    fig_price_pred.update_layout(title_text=f'Harga Aktual vs. Prediksi ARIMA untuk {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
+                    st.plotly_chart(fig_price_pred)
+
+                    # Evaluasi Model (RMSE, MAE, MAPE)
+                    st.subheader("B.2. Evaluasi Kinerja Prediksi Harga 📈")
+                    
+                    actual_test_prices = test_data_prices
+                    predicted_test_prices = forecast_arima.reindex(actual_test_prices.index)
+                    
+                    valid_indices = actual_test_prices.index.intersection(predicted_test_prices.index).dropna()
+                    actual_test_prices_filtered = actual_test_prices.loc[valid_indices]
+                    predicted_test_prices_filtered = predicted_test_prices.loc[valid_indices]
+
+                    if not actual_test_prices_filtered.empty and not predicted_test_prices_filtered.empty:
+                        rmse_price = np.sqrt(np.mean((predicted_test_prices_filtered - actual_test_prices_filtered)**2))
+                        mae_price = np.mean(np.abs(predicted_test_prices_filtered - actual_test_prices_filtered))
+                        mape_price = np.mean(np.abs((actual_test_prices_filtered - predicted_test_prices_filtered) / actual_test_prices_filtered)) * 100
+
+                        st.metric(label="RMSE (Harga)", value=f"{rmse_price:.4f}")
+                        st.metric(label="MAE (Harga)", value=f"{mae_price:.4f}")
+                        st.metric(label="MAPE (Harga)", value=f"{mape_price:.2f}%")
+
+                        st.session_state['rmse_price_arima'] = rmse_price
+                        st.session_state['mae_price_arima'] = mae_price
+                        st.session_state['mape_price_arima'] = mape_price
+                    else:
+                        st.warning("Tidak cukup data untuk menghitung metrik evaluasi harga. Pastikan ada data pengujian yang valid.")
+
+                    # --- UJI ASUMSI RESIDUAL ARIMA ---
+                    st.markdown("<h3 class='section-header'>C. Uji Asumsi Residual ARIMA 🧪📊</h3>", unsafe_allow_html=True)
+                    arima_residuals = st.session_state['arima_residuals']
+
+                    if not arima_residuals.empty:
+                        st.subheader("C.1. Visualisasi Residual ARIMA 📉")
+                        fig_res_hist = go.Figure(data=[go.Histogram(x=arima_residuals, nbinsx=50, marker_color='#3f72af')])
+                        fig_res_hist.update_layout(title_text='Histogram Residual ARIMA', xaxis_title='Residual', yaxis_title='Frekuensi')
+                        st.plotly_chart(fig_res_hist)
+
+                        fig_res_line = go.Figure(data=[go.Scatter(x=arima_residuals.index, y=arima_residuals, mode='lines', line=dict(color='#ff7f0e'))])
+                        fig_res_line.update_layout(title_text='Plot Residual ARIMA Terhadap Waktu', xaxis_title='Tanggal', yaxis_title='Residual')
+                        st.plotly_chart(fig_res_line)
+
+                        # Uji White Noise (Ljung-Box Test)
+                        st.subheader("C.2. Uji White Noise (Ljung-Box Test) 👻")
                         
-                        st.write("##### Uji Heteroskedastisitas (ARCH Test) 🌪️")
-                        st.info("Menguji apakah varians residual konstan (homoskedastisitas) atau bervariasi seiring waktu (heteroskedastisitas/ARCH effect). P-value < 0.05 menunjukkan adanya ARCH effect, yang berarti Anda memerlukan model GARCH.")
-                        try:
-                            # Use het_arch from statsmodels
-                            arch_test_result = het_arch(residuals)
-                            lm_statistic = arch_test_result[0]
-                            p_value = arch_test_result[1]
-                            f_statistic = arch_test_result[2]
-                            f_p_value = arch_test_result[3]
+                        lb_test = sm.stats.acorr_ljungbox(arima_residuals, lags=[10], return_df=True)
+                        p_value_ljungbox = lb_test.iloc[0]['lb_pvalue']
+                        st.write(f"**P-value Ljung-Box (lag 10):** {p_value_ljungbox:.4f}")
 
-                            st.write(f"**LM Statistic:** {lm_statistic:.4f}")
-                            st.write(f"**P-value (LM Test):** {p_value:.4f}")
-                            # st.write(f"F-Statistic: {f_statistic:.4f}")
-                            # st.write(f"P-value (F-Test): {f_p_value:.4f}")
+                        if p_value_ljungbox > 0.05:
+                            st.success("Residual ARIMA adalah **white noise** (gagal tolak H0). Ini adalah hasil yang baik! ✅")
+                        else:
+                            st.warning("Residual ARIMA **bukan white noise** (tolak H0). ⚠️ Mungkin ada informasi yang belum dimodelkan. Pertimbangkan ordo ARIMA lain.")
 
-                            if p_value < 0.05:
-                                st.error("Terdapat indikasi **heteroskedastisitas (ARCH effect)** pada residual ARIMA (P-value < 0.05). Ini berarti varians residual tidak konstan dan sangat direkomendasikan untuk melanjutkan dengan model NGARCH. 🎯")
-                                st.session_state['arima_residual_has_arch_effect'] = True
-                            else:
-                                st.success("Tidak ada indikasi heteroskedastisitas (ARCH effect) pada residual ARIMA. Varians residual konstan. 👍")
-                                st.session_state['arima_residual_has_arch_effect'] = False
-                        except Exception as e:
-                            st.error(f"Gagal menjalankan Uji ARCH: {e} ❌ Pastikan residual tidak kosong atau memiliki varians nol.")
+                        # Uji Normalitas (Jarque-Bera Test)
+                        st.subheader("C.3. Uji Normalitas Residual (Jarque-Bera Test) 🔔")
+                        jb_test = stats.jarque_bera(arima_residuals)
+                        st.write(f"**Jarque-Bera Statistic:** {jb_test[0]:.4f}")
+                        st.write(f"**P-value:** {jb_test[1]:.4f}")
+                        st.write(f"**Skewness:** {jb_test[2]:.4f}")
+                        st.write(f"**Kurtosis:** {jb_test[3]:.4f}")
+
+                        if jb_test[1] > 0.05:
+                            st.success("Residual ARIMA **terdistribusi normal** (gagal tolak H0). ✅")
+                        else:
+                            st.warning("Residual ARIMA **tidak terdistribusi normal** (tolak H0). ⚠️ Ini sering terjadi pada data finansial dan mengindikasikan volatilitas non-konstan atau *fat tails*, yang perlu dimodelkan dengan GARCH.")
+                        
+                        # Uji Heteroskedastisitas (ARCH Test)
+                        st.subheader("C.4. Uji Heteroskedastisitas (ARCH Test) 🌪️")
+                        st.info("Uji ARCH digunakan untuk mendeteksi apakah ada efek ARCH (Autoregressive Conditional Heteroskedasticity) pada residual. Jika ada, ini berarti volatilitasnya tidak konstan dan perlu dimodelkan dengan GARCH/NGARCH.")
+
+                        arch_test_lags = st.slider("Jumlah Lags untuk Uji ARCH:", 1, 10, 5, key="arch_test_lags")
+                        
+                        if st.button("Jalankan Uji ARCH ▶️", key="run_arch_test"):
+                            try:
+                                # het_arch returns (lm_statistic, p_value, f_statistic, f_p_value)
+                                arch_test_result = het_arch(arima_residuals.dropna(), nlags=arch_test_lags)
+                                p_value_arch = arch_test_result[1]
+                                st.write(f"**LM Statistic:** {arch_test_result[0]:.4f}")
+                                st.write(f"**P-value (LM Test):** {p_value_arch:.4f}")
+
+                                if p_value_arch <= 0.05:
+                                    st.warning("Terdapat efek ARCH (heteroskedastisitas) pada residual ARIMA (tolak H0: homoskedastisitas). ❗ Ini mengindikasikan model NGARCH diperlukan!")
+                                    st.session_state['arima_residual_has_arch_effect'] = True
+                                else:
+                                    st.success("Tidak ada efek ARCH (homoskedastisitas) pada residual ARIMA (gagal tolak H0). 👍")
+                                    st.session_state['arima_residual_has_arch_effect'] = False
+                            except Exception as e:
+                                st.error(f"Terjadi kesalahan saat menjalankan Uji ARCH: {e} ❌")
                     else:
-                        st.warning("Residual ARIMA tidak tersedia untuk analisis. Latih model terlebih dahulu. ⚠️")
+                        st.warning("Residual ARIMA tidak tersedia. Latih model ARIMA terlebih dahulu. ⚠️")
 
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat melatih model ARIMA: {e} ❌ Pastikan data pelatihan valid dan ordo ARIMA sesuai.")
-
-        # --- PREDIKSI HARGA ARIMA SECTION ---
-        st.markdown("<h3 class='section-header'>B. Prediksi Harga Menggunakan ARIMA 📈</h3>", unsafe_allow_html=True)
-        if st.session_state['model_arima_fit'] is not None:
-            st.write("Model ARIMA telah dilatih. Sekarang kita akan melakukan prediksi pada data pengujian dan memprediksi harga masa depan.")
-
-            predict_button_key = "predict_arima_button_trained" if st.session_state['model_arima_fit'] else "predict_arima_button_no_model"
-
-            if st.button("B.1. Lakukan Prediksi Harga ▶️", key=predict_button_key):
-                with st.spinner("Melakukan prediksi harga dengan ARIMA... ⏳"):
-                    try:
-                        # Prediksi pada data uji (return)
-                        start_test_index = test_data_returns.index[0]
-                        end_test_index = test_data_returns.index[-1]
-                        
-                        forecast_returns = st.session_state['model_arima_fit'].predict(start=start_test_index, end=end_test_index)
-                        
-                        # Pastikan forecast_returns memiliki indeks yang sama dengan test_data_returns
-                        forecast_returns = pd.Series(forecast_returns, index=test_data_returns.index)
-
-                        # Rekonstruksi harga dari return yang diprediksi
-                        # Kita perlu harga terakhir dari data training untuk memulai rekonstruksi
-                        last_train_price = original_prices_series.loc[train_data_returns.index[-1]]
-
-                        predicted_prices = [last_train_price]
-                        for r in forecast_returns:
-                            if return_type == "Log Return":
-                                predicted_prices.append(predicted_prices[-1] * np.exp(r))
-                            else: # Simple Return
-                                predicted_prices.append(predicted_prices[-1] * (1 + r))
-                        
-                        # Buang harga awal yang merupakan harga terakhir dari training set
-                        predicted_prices = predicted_prices[1:]
-                        predicted_prices_series = pd.Series(predicted_prices, index=test_data_returns.index)
-                        st.session_state['predicted_prices_series'] = predicted_prices_series
-
-                        st.success("Prediksi harga berhasil dilakukan! 🎉")
-
-                        st.subheader("B.2. Evaluasi Kinerja Prediksi Harga 📊")
-                        # Pastikan data aktual dan prediksi sejajar
-                        actual_prices_test = original_prices_series.loc[test_data_returns.index]
-
-                        # Hitung metrik evaluasi
-                        rmse = np.sqrt(mean_squared_error(actual_prices_test, predicted_prices_series))
-                        mae = np.mean(np.abs(actual_prices_test - predicted_prices_series))
-                        # MAPE: Hindari pembagian nol
-                        mape = np.mean(np.abs((actual_prices_test - predicted_prices_series) / actual_prices_test.replace(0, np.nan).dropna())) * 100
-                        if np.isnan(mape): # Handle cases where all actual_prices_test are 0 or NaNs
-                             mape = float('inf') # Or handle as appropriate for your domain
-
-                        st.metric("RMSE (Root Mean Squared Error)", f"{rmse:.4f}")
-                        st.metric("MAE (Mean Absolute Error)", f"{mae:.4f}")
-                        st.metric("MAPE (Mean Absolute Percentage Error)", f"{mape:.2f}%")
-
-                        st.session_state['rmse_price_arima'] = rmse
-                        st.session_state['mae_price_arima'] = mae
-                        st.session_state['mape_price_arima'] = mape
-                        
-                        st.subheader("B.3. Visualisasi Prediksi Harga ARIMA 📈")
-                        fig_forecast_price = go.Figure()
-                        fig_forecast_price.add_trace(go.Scatter(x=original_prices_series.index, y=original_prices_series, mode='lines', name='Harga Aktual (Keseluruhan)', line=dict(color='#5d8aa8')))
-                        fig_forecast_price.add_trace(go.Scatter(x=predicted_prices_series.index, y=predicted_prices_series, mode='lines', name='Harga Prediksi ARIMA', line=dict(color='red', dash='dot')))
-                        fig_forecast_price.update_layout(title_text=f'Harga Aktual vs. Prediksi ARIMA ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                        st.plotly_chart(fig_forecast_price)
-
-                        # --- Prediksi Harga Masa Depan ---
-                        st.subheader("B.4. Prediksi Harga Masa Depan ⏩")
-                        num_future_steps = st.number_input("Jumlah langkah prediksi ke depan:", min_value=1, max_value=30, value=7, key="num_future_steps_arima")
-                        
-                        if st.button(f"Prediksi {num_future_steps} Hari ke Depan", key="predict_future_arima_button"):
-                            with st.spinner(f"Memprediksi {num_future_steps} harga ke depan... ⏳"):
-                                try:
-                                    # Gunakan model_arima_fit untuk memprediksi return masa depan
-                                    future_returns_forecast = st.session_state['model_arima_fit'].predict(
-                                        start=len(train_data_returns),
-                                        end=len(train_data_returns) + num_future_steps - 1
-                                    )
-                                    
-                                    # Dapatkan tanggal terakhir dari data asli
-                                    last_date = original_prices_series.index[-1]
-                                    
-                                    # Buat indeks tanggal masa depan
-                                    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=num_future_steps, freq='D')
-                                    future_returns_series = pd.Series(future_returns_forecast, index=future_dates)
-
-                                    # Rekonstruksi harga masa depan
-                                    last_actual_price = original_prices_series.iloc[-1]
-                                    future_predicted_prices = [last_actual_price]
-                                    for r in future_returns_series:
-                                        if return_type == "Log Return":
-                                            future_predicted_prices.append(future_predicted_prices[-1] * np.exp(r))
-                                        else: # Simple Return
-                                            future_predicted_prices.append(future_predicted_prices[-1] * (1 + r))
-                                    
-                                    future_predicted_prices_series = pd.Series(future_predicted_prices[1:], index=future_dates)
-                                    st.session_state['future_predicted_prices_series'] = future_predicted_prices_series
-                                    st.session_state['last_forecast_price_arima'] = future_predicted_prices_series.iloc[-1]
-
-                                    st.success(f"Prediksi harga untuk {num_future_steps} hari ke depan berhasil! 🎉")
-                                    st.dataframe(future_predicted_prices_series)
-
-                                    fig_future_price = go.Figure()
-                                    fig_future_price.add_trace(go.Scatter(x=original_prices_series.index, y=original_prices_series, mode='lines', name='Harga Aktual (Historis)', line=dict(color='#5d8aa8')))
-                                    fig_future_price.add_trace(go.Scatter(x=predicted_prices_series.index, y=predicted_prices_series, mode='lines', name='Harga Prediksi (Data Uji)', line=dict(color='red', dash='dot')))
-                                    fig_future_price.add_trace(go.Scatter(x=future_predicted_prices_series.index, y=future_predicted_prices_series, mode='lines', name='Harga Prediksi (Masa Depan)', line=dict(color='green', dash='solid')))
-                                    fig_future_price.update_layout(title_text=f'Prediksi Harga {st.session_state.get("selected_currency", "")} (Historis & Masa Depan)', xaxis_rangeslider_visible=True)
-                                    st.plotly_chart(fig_future_price)
-                                
-                                except Exception as e:
-                                    st.error(f"Terjadi kesalahan saat memprediksi harga masa depan: {e} ❌")
-                        else:
-                            st.info("Masukkan jumlah langkah dan klik tombol untuk memprediksi harga masa depan. 🗓️")
-
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan saat melakukan prediksi harga: {e} ❌")
-            else:
-                st.info("Klik 'Lakukan Prediksi Harga' untuk melihat hasil dan metrik. ➡️")
-        else:
-            st.warning("Model ARIMA belum dilatih. Silakan latih model terlebih dahulu di bagian 'A.2. Latih Model ARIMA'. ⚠️")
+                st.error(f"Terjadi kesalahan saat melatih model ARIMA: {e} ❌ Pastikan data dan ordo ARIMA valid. {e}")
     else:
-        st.warning("Data pelatihan, pengujian, atau data harga asli belum tersedia. Pastikan Anda telah melalui 'Input Data', 'Data Preprocessing', dan 'Data Splitting'. ⚠️⬆️")
+        st.info("Silakan unggah, bersihkan, dan bagi data terlebih dahulu di halaman 'Input Data', 'Data Preprocessing', dan 'Data Splitting'. ⬆️")
 
 elif st.session_state['current_page'] == 'ngarch_modeling_prediction':
     st.markdown('<div class="main-header">MODEL & PREDIKSI NGARCH 🌪️🔮</div>', unsafe_allow_html=True)
-    st.write(f"Latih model NGARCH pada residual ARIMA dari {st.session_state.get('selected_currency', '')} untuk memodelkan volatilitas, kemudian lakukan prediksi volatilitas masa depan. 📊")
+    st.write(f"Latih model NGARCH pada residual model ARIMA dari {st.session_state.get('selected_currency', '')} untuk memodelkan volatilitas (varians bersyarat) dan lakukan prediksi. 📊")
 
     arima_residuals = st.session_state.get('arima_residuals', pd.Series())
-    arima_residual_has_arch_effect = st.session_state.get('arima_residual_has_arch_effect', None)
+    test_data_prices = st.session_state.get('test_data_prices', pd.Series()) # Needed for horizon and evaluation
 
     if not arima_residuals.empty:
-        if arima_residual_has_arch_effect is True:
-            st.info("Uji ARCH pada residual ARIMA menunjukkan adanya efek heteroskedastisitas. Anda dapat melanjutkan dengan pemodelan NGARCH.")
-            st.write("Residual ARIMA yang akan dimodelkan dengan NGARCH:")
-            st.dataframe(arima_residuals.head())
-
-            st.subheader("A. Pemodelan NGARCH (Variance Equation) ⚙️")
-            st.info("Pilih ordo p dan q untuk model NGARCH. Model NGARCH(p,q) memodelkan varians bersyarat berdasarkan kuadrat residual masa lalu (p) dan varians bersyarat masa lalu (q).")
-            
-            p_ngarch = st.number_input("Ordo NGARCH (p):", min_value=1, max_value=5, value=1, key="ngarch_p")
-            q_ngarch = st.number_input("Ordo NGARCH (q):", min_value=1, max_value=5, value=1, key="ngarch_q")
-
-            if st.button("A.2. Latih Model NGARCH ▶️", key="train_ngarch_button"):
-                with st.spinner("Melatih model NGARCH... ⏳"):
-                    try:
-                        # Model NGARCH perlu data residual
-                        model_ngarch = arch_model(arima_residuals, x=None, p=p_ngarch, o=1, q=q_ngarch, dist='normal', vol='NGARCH')
-                        model_ngarch_fit = model_ngarch.fit(disp='off') # disp='off' untuk menekan output verbose
-
-                        st.session_state['model_ngarch_fit'] = model_ngarch_fit
-                        st.success("Model NGARCH berhasil dilatih! 🎉")
-
-                        st.subheader("A.3. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
-                        st.text(model_ngarch_fit.summary().as_text())
-                        
-                        st.subheader("A.4. Uji Signifikansi Koefisien NGARCH (P-value) ✅❌")
-                        st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05 (pada tingkat kepercayaan 95%).")
-                        
-                        ngarch_summary_html = model_ngarch_fit.summary().tables[1].as_html()
-                        df_ngarch_results = pd.read_html(ngarch_summary_html, header=0, index_col=0)[0]
-                        st.dataframe(df_ngarch_results[['P>|z|']].style.applymap(lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
-
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌ Pastikan ordo NGARCH sesuai dan data residual valid.")
-            else:
-                st.info("Pilih ordo NGARCH dan klik 'Latih Model NGARCH' untuk memulai. ➡️")
-            
-            # --- PREDIKSI VOLATILITAS NGARCH SECTION ---
-            st.markdown("<h3 class='section-header'>B. Prediksi Volatilitas Menggunakan NGARCH 🌪️</h3>", unsafe_allow_html=True)
-            if st.session_state['model_ngarch_fit'] is not None:
-                st.write("Model NGARCH telah dilatih. Sekarang kita akan memprediksi volatilitas masa depan.")
-
-                if st.button("B.1. Lakukan Prediksi Volatilitas ▶️", key="predict_volatility_button"):
-                    with st.spinner("Memprediksi volatilitas dengan NGARCH... ⏳"):
-                        try:
-                            # Prediksi volatilitas in-sample (untuk plotting)
-                            in_sample_forecast = st.session_state['model_ngarch_fit'].conditional_volatility
-                            predicted_volatility_series = pd.Series(in_sample_forecast, index=arima_residuals.index)
-                            st.session_state['predicted_volatility_series'] = predicted_volatility_series
-
-                            st.success("Prediksi volatilitas in-sample berhasil! 🎉")
-
-                            st.subheader("B.2. Visualisasi Volatilitas Prediksi NGARCH 📈")
-                            fig_volatility = go.Figure()
-                            fig_volatility.add_trace(go.Scatter(x=arima_residuals.index, y=predicted_volatility_series, mode='lines', name='Volatilitas Prediksi NGARCH', line=dict(color='#ff7f0e')))
-                            fig_volatility.update_layout(title_text=f'Volatilitas Prediksi NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                            st.plotly_chart(fig_volatility)
-
-                            # --- Prediksi Volatilitas Masa Depan ---
-                            st.subheader("B.3. Prediksi Volatilitas Masa Depan ⏩")
-                            num_future_vol_steps = st.number_input("Jumlah langkah prediksi volatilitas ke depan:", min_value=1, max_value=30, value=7, key="num_future_vol_steps_ngarch")
-                            
-                            if st.button(f"Prediksi {num_future_vol_steps} Volatilitas ke Depan", key="predict_future_vol_button"):
-                                with st.spinner(f"Memprediksi {num_future_vol_steps} volatilitas ke depan... ⏳"):
-                                    try:
-                                        # Prediksi volatilitas out-of-sample
-                                        # Menggunakan forecast() method
-                                        # start = len(arima_residuals) jika ingin forecast langsung setelah data pelatihan
-                                        # Atau ambil tanggal terakhir dari data residual untuk memulai forecast
-                                        last_date_residuals = arima_residuals.index[-1]
-                                        
-                                        # Buat indeks tanggal masa depan
-                                        future_vol_dates = pd.date_range(start=last_date_residuals + pd.Timedelta(days=1), periods=num_future_vol_steps, freq='D')
-
-                                        # Forecast menggunakan model_ngarch_fit.forecast(horizon=...)
-                                        # forecast_results.variance.values[-1, :] memberikan prediksi varians untuk horizon yang ditentukan
-                                        forecast_ngarch = st.session_state['model_ngarch_fit'].forecast(horizon=num_future_vol_steps, start=None) # start=None will use the end of the data
-
-                                        # conditional_volatility adalah akar kuadrat dari varians
-                                        future_predicted_volatility = np.sqrt(forecast_ngarch.variance.values[-1, :])
-                                        future_predicted_volatility_series = pd.Series(future_predicted_volatility, index=future_vol_dates)
-
-                                        st.session_state['future_predicted_volatility_series'] = future_predicted_volatility_series
-                                        st.session_state['last_forecast_volatility_ngarch'] = future_predicted_volatility_series.iloc[-1]
-
-                                        st.success(f"Prediksi volatilitas untuk {num_future_vol_steps} hari ke depan berhasil! 🎉")
-                                        st.dataframe(future_predicted_volatility_series)
-
-                                        fig_future_vol = go.Figure()
-                                        fig_future_vol.add_trace(go.Scatter(x=predicted_volatility_series.index, y=predicted_volatility_series, mode='lines', name='Volatilitas Prediksi (Data Latih)', line=dict(color='#ff7f0e')))
-                                        fig_future_vol.add_trace(go.Scatter(x=future_predicted_volatility_series.index, y=future_predicted_volatility_series, mode='lines', name='Volatilitas Prediksi (Masa Depan)', line=dict(color='#3d85c6', dash='solid')))
-                                        fig_future_vol.update_layout(title_text=f'Prediksi Volatilitas NGARCH {st.session_state.get("selected_currency", "")} (Historis & Masa Depan)', xaxis_rangeslider_visible=True)
-                                        st.plotly_chart(fig_future_vol)
-                                        
-                                    except Exception as e:
-                                        st.error(f"Terjadi kesalahan saat memprediksi volatilitas masa depan: {e} ❌")
-                            else:
-                                st.info("Masukkan jumlah langkah dan klik tombol untuk memprediksi volatilitas masa depan. 🗓️")
-
-                        except Exception as e:
-                            st.error(f"Terjadi kesalahan saat melakukan prediksi volatilitas: {e} ❌")
-                else:
-                    st.info("Klik 'Lakukan Prediksi Volatilitas' untuk melihat hasil prediksi dan visualisasi. ➡️")
-            else:
-                st.warning("Model NGARCH belum dilatih. Silakan latih model terlebih dahulu di bagian 'A.2. Latih Model NGARCH'. ⚠️")
-        else:
-            st.warning("Uji ARCH pada residual ARIMA tidak menunjukkan adanya efek heteroskedastisitas (varians konstan). Model NGARCH mungkin tidak diperlukan. Namun, Anda tetap dapat melatihnya jika ingin mengeksplorasi.")
-            st.info("Jika Anda tetap ingin melatih model NGARCH, lanjutkan dengan memilih ordo dan klik tombol latihan.")
-            # Still offer the option to train even if ARCH test is negative
-            st.subheader("A. Pemodelan NGARCH (Variance Equation) ⚙️")
-            p_ngarch = st.number_input("Ordo NGARCH (p):", min_value=1, max_value=5, value=1, key="ngarch_p_no_arch")
-            q_ngarch = st.number_input("Ordo NGARCH (q):", min_value=1, max_value=5, value=1, key="ngarch_q_no_arch")
-            if st.button("A.2. Latih Model NGARCH (Meski Tanpa ARCH Effect) ▶️", key="train_ngarch_button_no_arch"):
-                with st.spinner("Melatih model NGARCH... ⏳"):
-                    try:
-                        model_ngarch = arch_model(arima_residuals, x=None, p=p_ngarch, o=1, q=q_ngarch, dist='normal', vol='NGARCH')
-                        model_ngarch_fit = model_ngarch.fit(disp='off')
-
-                        st.session_state['model_ngarch_fit'] = model_ngarch_fit
-                        st.success("Model NGARCH berhasil dilatih! 🎉")
-
-                        st.subheader("A.3. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
-                        st.text(model_ngarch_fit.summary().as_text())
-                        
-                        st.subheader("A.4. Uji Signifikansi Koefisien NGARCH (P-value) ✅❌")
-                        ngarch_summary_html = model_ngarch_fit.summary().tables[1].as_html()
-                        df_ngarch_results = pd.read_html(ngarch_summary_html, header=0, index_col=0)[0]
-                        st.dataframe(df_ngarch_results[['P>|z|']].style.applymap(lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
-                    except Exception as e:
-                        st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌")
+        st.markdown("<h3 class='section-header'>A. Pemodelan NGARCH (Volatilitas) ⚙️</h3>", unsafe_allow_html=True)
+        st.write("Residual dari model ARIMA akan digunakan sebagai input untuk model NGARCH:")
+        st.dataframe(arima_residuals.head())
         
-            if st.session_state['model_ngarch_fit'] is not None:
-                st.markdown("<h3 class='section-header'>B. Prediksi Volatilitas Menggunakan NGARCH 🌪️</h3>", unsafe_allow_html=True)
-                if st.button("B.1. Lakukan Prediksi Volatilitas ▶️", key="predict_volatility_button_no_arch"):
-                    with st.spinner("Memprediksi volatilitas dengan NGARCH... ⏳"):
-                        try:
-                            in_sample_forecast = st.session_state['model_ngarch_fit'].conditional_volatility
-                            predicted_volatility_series = pd.Series(in_sample_forecast, index=arima_residuals.index)
-                            st.session_state['predicted_volatility_series'] = predicted_volatility_series
+        st.subheader("A.1. Pilih Ordo NGARCH (p, q) 🔢")
+        st.info("Pilih kombinasi ordo NGARCH (p, q). P mewakili orde ARCH, Q mewakili orde GARCH.")
 
-                            st.success("Prediksi volatilitas in-sample berhasil! 🎉")
+        ngarch_orders_options = {
+            "NGARCH (1,1)": (1, 1),
+            "NGARCH (1,2)": (1, 2),
+            "NGARCH (2,1)": (2, 1),
+            "NGARCH (2,2)": (2, 2)
+        }
+        
+        selected_ngarch_label = st.selectbox(
+            "Pilih salah satu model NGARCH:",
+            list(ngarch_orders_options.keys()),
+            key="ngarch_model_selector"
+        )
+        
+        p_ngarch, q_ngarch = ngarch_orders_options[selected_ngarch_label]
+        
+        st.write(f"Ordo NGARCH yang dipilih: **p={p_ngarch}, q={q_ngarch}**")
 
-                            st.subheader("B.2. Visualisasi Volatilitas Prediksi NGARCH 📈")
-                            fig_volatility = go.Figure()
-                            fig_volatility.add_trace(go.Scatter(x=arima_residuals.index, y=predicted_volatility_series, mode='lines', name='Volatilitas Prediksi NGARCH', line=dict(color='#ff7f0e')))
-                            fig_volatility.update_layout(title_text=f'Volatilitas Prediksi NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                            st.plotly_chart(fig_volatility)
+        st.subheader("A.2. Pilih Distribusi Residual 📊")
+        dist_options = {
+            "Normal": Normal,
+            "Student's T": StudentsT,
+            "Skew Student's T": SkewStudent
+        }
+        selected_dist_label = st.selectbox(
+            "Pilih distribusi residual untuk NGARCH:",
+            list(dist_options.keys()),
+            key="ngarch_distribution_selector"
+        )
+        selected_dist = dist_options[selected_dist_label]
 
-                            st.subheader("B.3. Prediksi Volatilitas Masa Depan ⏩")
-                            num_future_vol_steps = st.number_input("Jumlah langkah prediksi volatilitas ke depan:", min_value=1, max_value=30, value=7, key="num_future_vol_steps_ngarch_no_arch")
-                            if st.button(f"Prediksi {num_future_vol_steps} Volatilitas ke Depan", key="predict_future_vol_button_no_arch"):
-                                with st.spinner(f"Memprediksi {num_future_vol_steps} volatilitas ke depan... ⏳"):
-                                    try:
-                                        last_date_residuals = arima_residuals.index[-1]
-                                        future_vol_dates = pd.date_range(start=last_date_residuals + pd.Timedelta(days=1), periods=num_future_vol_steps, freq='D')
-                                        forecast_ngarch = st.session_state['model_ngarch_fit'].forecast(horizon=num_future_vol_steps, start=None)
-                                        future_predicted_volatility = np.sqrt(forecast_ngarch.variance.values[-1, :])
-                                        future_predicted_volatility_series = pd.Series(future_predicted_volatility, index=future_vol_dates)
+        if st.button("A.3. Latih Model NGARCH ▶️", key="train_ngarch_button"):
+            try:
+                if st.session_state.get('arima_residual_has_arch_effect') == False:
+                    st.warning("Uji ARCH pada residual ARIMA menunjukkan tidak ada efek ARCH. Model NGARCH mungkin tidak diperlukan atau tidak signifikan. Anda bisa tetap melatihnya, tetapi hasilnya mungkin tidak kuat.")
+                
+                with st.spinner("Melatih model NGARCH... ⏳"):
+                    
+                    model_ngarch = arch_model(
+                        arima_residuals, # input is the residuals from ARIMA
+                        p=p_ngarch,
+                        o=1, # o=1 for NGARCH (asymmetric GARCH)
+                        q=q_ngarch,
+                        dist=selected_dist.__name__, # Pass the name of the distribution
+                        vol='NGARCH' # Specify NGARCH for volatility model
+                    )
+                    model_ngarch_fit = model_ngarch.fit(disp='off') # disp='off' to suppress verbose output
+                    
+                    st.session_state['model_ngarch_fit'] = model_ngarch_fit
+                    st.success("Model NGARCH berhasil dilatih! 🎉")
 
-                                        st.session_state['future_predicted_volatility_series'] = future_predicted_volatility_series
-                                        st.session_state['last_forecast_volatility_ngarch'] = future_predicted_volatility_series.iloc[-1]
+                    st.subheader("A.4. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
+                    st.text(model_ngarch_fit.summary().as_text())
 
-                                        st.success(f"Prediksi volatilitas untuk {num_future_vol_steps} hari ke depan berhasil! 🎉")
-                                        st.dataframe(future_predicted_volatility_series)
+                    st.subheader("A.5. Uji Signifikansi Koefisien (P-value) ✅❌")
+                    st.info("P-value untuk setiap koefisien NGARCH menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05.")
+                    
+                    model_summary_ngarch = model_ngarch_fit.summary()
+                    if hasattr(model_summary_ngarch, 'tables') and len(model_summary_ngarch.tables) > 1:
+                        params_table_ngarch = model_summary_ngarch.tables[1]
+                        st.dataframe(params_table_ngarch)
+                    else:
+                        st.info("Tidak dapat menampilkan tabel koefisien NGARCH secara rinci. Silakan lihat ringkasan model di atas.")
+                    
+                    # --- PREDIKSI VOLATILITAS DENGAN NGARCH ---
+                    st.markdown("<h3 class='section-header'>B. Prediksi Volatilitas dengan NGARCH 🌪️🔮</h3>", unsafe_allow_html=True)
+                    st.info("Prediksi volatilitas akan dilakukan untuk periode data pengujian dan masa depan.")
 
-                                        fig_future_vol = go.Figure()
-                                        fig_future_vol.add_trace(go.Scatter(x=predicted_volatility_series.index, y=predicted_volatility_series, mode='lines', name='Volatilitas Prediksi (Data Latih)', line=dict(color='#ff7f0e')))
-                                        fig_future_vol.add_trace(go.Scatter(x=future_predicted_volatility_series.index, y=future_predicted_volatility_series, mode='lines', name='Volatilitas Prediksi (Masa Depan)', line=dict(color='#3d85c6', dash='solid')))
-                                        fig_future_vol.update_layout(title_text=f'Prediksi Volatilitas NGARCH {st.session_state.get("selected_currency", "")} (Historis & Masa Depan)', xaxis_rangeslider_visible=True)
-                                        st.plotly_chart(fig_future_vol)
-                                    except Exception as e:
-                                        st.error(f"Terjadi kesalahan saat memprediksi volatilitas masa depan: {e} ❌")
-                            else:
-                                st.info("Masukkan jumlah langkah dan klik tombol untuk memprediksi volatilitas masa depan. 🗓️")
-                        except Exception as e:
-                            st.error(f"Terjadi kesalahan saat melakukan prediksi volatilitas: {e} ❌")
-                else:
-                    st.info("Klik 'Lakukan Prediksi Volatilitas' untuk melihat hasil prediksi dan visualisasi. ➡️")
-            else:
-                st.warning("Model NGARCH belum dilatih. Silakan latih model terlebih dahulu di bagian 'A.2. Latih Model NGARCH'. ⚠️")
+                    # Fitted volatility on training data (implied variance)
+                    fitted_volatility_ngarch = model_ngarch_fit.conditional_volatility
+                    
+                    # Forecast volatility for test data and future
+                    if not test_data_prices.empty:
+                        horizon_steps = len(test_data_prices) # For test period
+                    else:
+                        horizon_steps = 10 # Default future forecast if no test data for price prediction
 
+                    forecast_ngarch_obj = model_ngarch_fit.forecast(horizon=horizon_steps) # No start date needed for out-of-sample forecast. It takes from the end of the data used for fitting.
+                    forecast_volatility_ngarch = np.sqrt(forecast_ngarch_obj.variance.iloc[-1]).squeeze() # Get std dev
+
+                    # Create index for the forecast
+                    last_train_date = arima_residuals.index.max()
+                    forecast_dates = pd.date_range(start=last_train_date + pd.Timedelta(days=1), periods=horizon_steps, freq='D')
+                    
+                    if isinstance(forecast_volatility_ngarch, np.ndarray): # Handle case where squeeze might return a scalar for horizon=1
+                        forecast_volatility_ngarch = pd.Series(forecast_volatility_ngarch, index=forecast_dates)
+                    elif isinstance(forecast_volatility_ngarch, pd.Series) and forecast_volatility_ngarch.index.empty:
+                        forecast_volatility_ngarch.index = forecast_dates
+                    elif isinstance(forecast_volatility_ngarch, pd.Series): # If it's already a series, but with default index
+                        forecast_volatility_ngarch.index = forecast_dates
+                    
+                    st.session_state['future_predicted_volatility_series'] = forecast_volatility_ngarch
+                    st.session_state['last_forecast_volatility_ngarch'] = forecast_volatility_ngarch.iloc[-1] if not forecast_volatility_ngarch.empty else None
+
+                    # Combine fitted volatility and forecast volatility for plotting
+                    combined_vol_index = fitted_volatility_ngarch.index.append(st.session_state['future_predicted_volatility_series'].index)
+                    predicted_volatility_series = pd.concat([fitted_volatility_ngarch, st.session_state['future_predicted_volatility_series']])
+                    predicted_volatility_series = predicted_volatility_series.reindex(combined_vol_index) # Ensure correct indexing
+
+                    st.session_state['predicted_volatility_series'] = predicted_volatility_series
+
+                    # Visualisasi Prediksi Volatilitas
+                    st.subheader("B.1. Grafik Volatilitas Aktual (Implied) vs. Prediksi NGARCH 📊")
+                    fig_vol_pred = go.Figure()
+                    fig_vol_pred.add_trace(go.Scatter(x=fitted_volatility_ngarch.index, y=fitted_volatility_ngarch, mode='lines', name='Volatilitas Latih Aktual (Implied)', line=dict(color='orange')))
+                    if not st.session_state['future_predicted_volatility_series'].empty:
+                        fig_vol_pred.add_trace(go.Scatter(x=st.session_state['future_predicted_volatility_series'].index, y=st.session_state['future_predicted_volatility_series'], mode='lines', name='Prediksi Volatilitas NGARCH', line=dict(color='purple', dash='dash')))
+                    fig_vol_pred.update_layout(title_text=f'Volatilitas Aktual vs. Prediksi NGARCH untuk {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
+                    st.plotly_chart(fig_vol_pred)
+
+                    # Evaluasi Model Volatilitas (RMSE, MAE)
+                    st.subheader("B.2. Evaluasi Kinerja Prediksi Volatilitas 📈")
+                    
+                    # To evaluate volatility prediction, we compare forecast variance with squared residuals from the ARIMA model in the test set.
+                    # First, get the residuals of the ARIMA model for the test period.
+                    # We need the actual prices (test_data_prices) and ARIMA predicted prices for the test period.
+                    arima_predicted_test_prices = st.session_state['predicted_prices_series'].loc[test_data_prices.index]
+
+                    actual_test_residuals_arima = test_data_prices - arima_predicted_test_prices
+                    actual_test_squared_residuals = actual_test_residuals_arima**2
+
+                    # The NGARCH forecast for the test period is in st.session_state['future_predicted_volatility_series']
+                    # We need the variance from NGARCH forecast for comparison
+                    predicted_test_volatility_variance = st.session_state['future_predicted_volatility_series']**2 
+                    
+                    # Align indices
+                    common_index = actual_test_squared_residuals.index.intersection(predicted_test_volatility_variance.index)
+                    actual_test_squared_residuals_aligned = actual_test_squared_residuals.loc[common_index]
+                    predicted_test_volatility_variance_aligned = predicted_test_volatility_variance.loc[common_index]
+
+                    if not actual_test_squared_residuals_aligned.empty and not predicted_test_volatility_variance_aligned.empty:
+                        rmse_vol = np.sqrt(np.mean((predicted_test_volatility_variance_aligned - actual_test_squared_residuals_aligned)**2))
+                        mae_vol = np.mean(np.abs(predicted_test_volatility_variance_aligned - actual_test_squared_residuals_aligned))
+                        
+                        st.metric(label="RMSE (Volatilitas Variance)", value=f"{rmse_vol:.6f}")
+                        st.metric(label="MAE (Volatilitas Variance)", value=f"{mae_vol:.6f}")
+                        
+                        st.session_state['rmse_vol_ngarch'] = rmse_vol
+                        st.session_state['mae_vol_ngarch'] = mae_vol
+                        st.session_state['mape_vol_ngarch'] = None # MAPE not typically used for variance evaluation
+                    else:
+                        st.warning("Tidak cukup data untuk menghitung metrik evaluasi volatilitas. Pastikan ada data pengujian yang valid dan prediksi ARIMA telah dilakukan.")
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat melatih atau memprediksi model NGARCH: {e} ❌")
     else:
-        st.warning("Residual ARIMA tidak tersedia untuk pemodelan NGARCH. Pastikan Anda telah melatih model ARIMA terlebih dahulu di halaman 'MODEL & PREDIKSI ARIMA'. ⚠️⬆️")
-
-elif st.session_state['current_page'] == 'interpretasi_saran':
-    st.markdown('<div class="main-header">INTERPRETASI & SARAN 💡</div>', unsafe_allow_html=True)
-    st.write("Di halaman ini, Anda akan menemukan interpretasi dari hasil model ARIMA dan NGARCH serta saran-saran berdasarkan analisis. 🤔✨")
-
-    st.subheader(f"Ringkasan Hasil untuk {st.session_state.get('selected_currency', 'Mata Uang')}")
-
-    col_inter_1, col_inter_2 = st.columns(2)
-
-    with col_inter_1:
-        st.markdown("#### Hasil Prediksi Harga (ARIMA)")
-        if st.session_state['rmse_price_arima'] is not None:
-            st.metric("RMSE Harga ARIMA", f"{st.session_state['rmse_price_arima']:.4f}")
-            st.metric("MAE Harga ARIMA", f"{st.session_state['mae_price_arima']:.4f}")
-            st.metric("MAPE Harga ARIMA", f"{st.session_state['mape_price_arima']:.2f}%")
-            if not st.session_state['future_predicted_prices_series'].empty:
-                st.write(f"Harga prediksi terakhir: **{st.session_state['last_forecast_price_arima']:.4f}**")
-                st.write("Prediksi Harga Masa Depan:")
-                st.dataframe(st.session_state['future_predicted_prices_series'])
-            else:
-                st.info("Belum ada prediksi harga masa depan. Jalankan prediksi di bagian 'MODEL & PREDIKSI ARIMA'.")
-        else:
-            st.info("Model ARIMA belum dilatih atau prediksi belum dilakukan.")
-
-    with col_inter_2:
-        st.markdown("#### Hasil Prediksi Volatilitas (NGARCH)")
-        if st.session_state['model_ngarch_fit'] is not None:
-            if st.session_state['arima_residual_has_arch_effect'] is True:
-                st.success("Ada ARCH Effect terdeteksi, pemodelan NGARCH relevan.")
-            elif st.session_state['arima_residual_has_arch_effect'] is False:
-                st.info("Tidak ada ARCH Effect terdeteksi, namun model NGARCH telah dilatih.")
-            else:
-                st.warning("Status ARCH Effect belum diuji.")
-
-            if not st.session_state['future_predicted_volatility_series'].empty:
-                st.write(f"Volatilitas prediksi terakhir: **{st.session_state['last_forecast_volatility_ngarch']:.4f}**")
-                st.write("Prediksi Volatilitas Masa Depan:")
-                st.dataframe(st.session_state['future_predicted_volatility_series'])
-            else:
-                st.info("Belum ada prediksi volatilitas masa depan. Jalankan prediksi di bagian 'MODEL & PREDIKSI NGARCH'.")
-        else:
-            st.info("Model NGARCH belum dilatih atau prediksi belum dilakukan.")
-
-    st.markdown("#### Interpretasi Umum Hasil Model")
-
-    if st.session_state['model_arima_fit'] is not None:
-        st.markdown("##### Interpretasi Model ARIMA:")
-        st.write("- **Signifikansi Koefisien:** Periksa P-value dari koefisien AR dan MA di ringkasan model ARIMA. Jika P-value < 0.05, koefisien tersebut signifikan secara statistik, artinya lag tersebut penting untuk memprediksi return.")
-        st.write("- **Residual:**")
-        if st.session_state.get('arima_residuals', pd.Series()).empty:
-             st.info("Residual ARIMA belum tersedia.")
-        else:
-            lb_test_res = sm.stats.acorr_ljungbox(st.session_state['arima_residuals'], lags=[10], return_df=True)
-            if lb_test_res['lb_pvalue'].iloc[0] < 0.05:
-                st.warning("  - Uji Ljung-Box menunjukkan residual ARIMA **masih berkorelasi**. Ini berarti model ARIMA mungkin belum sepenuhnya menangkap pola dalam data return. Pertimbangkan ordo ARIMA lain atau model yang lebih kompleks.")
-            else:
-                st.success("  - Uji Ljung-Box menunjukkan residual ARIMA **sudah white noise**. Model ARIMA sudah cukup baik dalam memodelkan bagian mean dari deret waktu.")
-            
-            jb_test_res = stats.jarque_bera(st.session_state['arima_residuals'])
-            if jb_test_res[1] < 0.05:
-                st.warning("  - Uji Jarque-Bera menunjukkan residual ARIMA **tidak normal**. Ini sangat umum pada data keuangan, mengindikasikan adanya 'fat tails' atau 'leptokurtosis' (banyak outlier). Ini adalah alasan utama untuk menggunakan model GARCH/NGARCH untuk memodelkan volatilitasnya.")
-            else:
-                st.success("  - Uji Jarque-Bera menunjukkan residual ARIMA **berdistribusi normal**.")
-
-            if st.session_state['arima_residual_has_arch_effect'] is True:
-                st.warning("  - Uji ARCH menunjukkan residual ARIMA **memiliki efek ARCH (heteroskedastisitas)**. Ini adalah indikasi kuat bahwa varians return tidak konstan dan model NGARCH (atau keluarga GARCH lainnya) diperlukan untuk memodelkan volatilitas.")
-            elif st.session_state['arima_residual_has_arch_effect'] is False:
-                st.success("  - Uji ARCH menunjukkan residual ARIMA **tidak memiliki efek ARCH**. Varians return cenderung konstan.")
-            else:
-                st.info("  - Uji ARCH pada residual ARIMA belum dilakukan.")
-
-    if st.session_state['model_ngarch_fit'] is not None:
-        st.markdown("##### Interpretasi Model NGARCH:")
-        st.write("- **Signifikansi Koefisien:** Periksa P-value dari koefisien `omega`, `alpha`, `beta`, dan `gamma` (jika ada) di ringkasan model NGARCH. Jika P-value < 0.05, koefisien tersebut signifikan, yang berarti ada efek volatilitas klustering (alpha, beta) dan asimetri (gamma).")
-        st.write("- **Volatilitas Klustering:** Koefisien `alpha` (respon terhadap guncangan masa lalu) dan `beta` (persistensi volatilitas) yang signifikan menunjukkan bahwa periode volatilitas tinggi cenderung diikuti oleh periode volatilitas tinggi, dan sebaliknya.")
-        st.write("- **Efek Asimetri (Leverage Effect):** Untuk model NGARCH, koefisien `gamma` yang signifikan dan positif menunjukkan bahwa guncangan negatif (berita buruk) memiliki dampak yang lebih besar pada volatilitas masa depan dibandingkan guncangan positif (berita baik) dengan besaran yang sama. Ini adalah fitur penting dari NGARCH.")
-    
-    st.markdown("#### Saran dan Rekomendasi 💡")
-    st.markdown("""
-    <ul>
-        <li>Jika model ARIMA menunjukkan residual yang masih berkorelasi (Ljung-Box P-value < 0.05), pertimbangkan untuk mencoba kombinasi ordo (p,q) ARIMA yang berbeda atau model lain yang lebih canggih.</li>
-        <li>Non-normalitas residual (Jarque-Bera P-value < 0.05) adalah hal yang diharapkan pada data keuangan. Model GARCH/NGARCH dirancang untuk menangani ini dengan memodelkan varians bersyarat.</li>
-        <li>Jika ada ARCH effect (Uji ARCH P-value < 0.05), penggunaan model NGARCH sangat tepat untuk memodelkan dan memprediksi volatilitas.</li>
-        <li>Evaluasi kinerja model (RMSE, MAE, MAPE) memberikan gambaran seberapa baik model memprediksi. Nilai yang lebih rendah menunjukkan kinerja yang lebih baik.</li>
-        <li>Prediksi volatilitas dari NGARCH dapat digunakan untuk manajemen risiko, penetapan harga opsi, atau strategi trading berbasis volatilitas.</li>
-    </ul>
-    """, unsafe_allow_html=True)
+        st.info("Silakan latih model ARIMA terlebih dahulu di halaman 'Model & Prediksi ARIMA' untuk mendapatkan residual. ⬆️")
