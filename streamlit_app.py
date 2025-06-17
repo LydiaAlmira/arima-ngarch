@@ -175,10 +175,10 @@ menu_items = {
     "DATA PREPROCESSING 🧹": "data_preprocessing",
     "STASIONERITAS DATA 📊": "stasioneritas_data",
     "DATA SPLITTING ✂️": "data_splitting",
-    "MODEL ARIMA 📈": "pemodelan_arima", # Diubah namanya
-    "PREDIKSI ARIMA 📈": "prediksi_arima", # Tambahan menu prediksi untuk ARIMA
-    "MODEL NGARCH 🌪️": "pemodelan_ngarch", # Diubah namanya
-    "PREDIKSI NGARCH 🌪️": "prediksi_ngarch", # Tambahan menu prediksi untuk NGARCH
+    "MODEL ARIMA": "pemodelan_arima", # Diubah namanya
+    "PREDIKSI ARIMA": "prediksi_arima", # Tambahan menu prediksi untuk ARIMA
+    "MODEL NGARCH": "pemodelan_ngarch", # Diubah namanya
+    "PREDIKSI NGARCH": "prediksi_ngarch", # Tambahan menu prediksi untuk NGARCH
     "INTERPRETASI & SARAN 💡": "interpretasi_saran",
 }
 
@@ -213,10 +213,10 @@ if st.session_state['current_page'] == 'home':
         <li><b>DATA PREPROCESSING 🧹:</b> Lakukan pembersihan dan transformasi data (misalnya, menghitung return).</li>
         <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas data return dan periksa autokorelasi.</li>
         <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi latih dan uji.</li>
-        <li><b>MODEL ARIMA 📈:</b> Langkah-langkah untuk membentuk model ARIMA pada data return (untuk prediksi nilai tukar), termasuk uji asumsi dan koefisien.</li>
-        <li><b>PREDIKSI ARIMA 📈:</b> Menampilkan hasil prediksi nilai tukar dari model ARIMA dan evaluasinya.</li>
-        <li><b>MODEL NGARCH 🌪️:</b> Langkah-langkah untuk membentuk model NGARCH pada residual ARIMA (untuk prediksi volatilitas), termasuk uji asumsi dan koefisien.</li>
-        <li><b>PREDIKSI NGARCH 🌪️:</b> Menampilkan hasil prediksi volatilitas dari model NGARCH dan visualisasinya.</li>
+        <li><b>MODEL ARIMA :</b> Langkah-langkah untuk membentuk model ARIMA pada data return (untuk prediksi nilai tukar), termasuk uji asumsi dan koefisien.</li>
+        <li><b>PREDIKSI ARIMA :</b> Menampilkan hasil prediksi nilai tukar dari model ARIMA dan evaluasinya.</li>
+        <li><b>MODEL NGARCH :</b> Langkah-langkah untuk membentuk model NGARCH pada residual ARIMA (untuk prediksi volatilitas), termasuk uji asumsi dan koefisien.</li>
+        <li><b>PREDIKSI NGARCH :</b> Menampilkan hasil prediksi volatilitas dari model NGARCH dan visualisasinya.</li>
         <li><b>INTERPRETASI & SARAN 💡:</b> Penjelasan hasil model dan rekomendasi.</li>
     </ul>
     </div>
@@ -305,7 +305,7 @@ elif st.session_state['current_page'] == 'input_data':
 
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
-    st.write("Lakukan pembersihan dan transformasi data nilai tukar. Untuk model ARIMA-NGARCH, kita perlu mengubah data harga menjadi return (perubahan logaritmik atau persentase). ✨")
+    st.write("Lakukan pembersihan dan transformasi data nilai tukar.✨")
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         df_raw = st.session_state['df_currency_raw'].copy()
@@ -360,7 +360,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
 
 elif st.session_state['current_page'] == 'stasioneritas_data':
-    st.markdown('<div class="main-header">Stasioneritas Data Return 📊🧪</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data return {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
 
     if 'processed_returns' in st.session_state and not st.session_state['processed_returns'].empty:
