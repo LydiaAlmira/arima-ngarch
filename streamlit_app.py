@@ -367,9 +367,9 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     st.markdown("Menggunakan data hasil preprocessing.")
     
      if 'preprocessed_data' in st.session_state and not st.session_state['preprocessed_data'].empty:
-        series_to_test = st.session_state['preprocessed_data']
-        st.write(f"5 baris pertama data nilai tukar {st.session_state.get('selected_currency', '')} yang akan diuji:")
-        st.dataframe(series_to_test.head())
+         series_to_test = st.session_state['preprocessed_data'] 
+         st.write(f"5 baris pertama data nilai tukar {st.session_state.get('selected_currency', '')} yang akan diuji:")
+         st.dataframe(series_to_test.head())
         
         if st.button("Uji Stasioneritas", key="uji_adf"):
             series = df[kolom_pilihan].dropna()
