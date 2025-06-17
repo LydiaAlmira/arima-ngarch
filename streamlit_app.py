@@ -439,8 +439,8 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
-    else:
-        st.info("Menggunakan data hasil preprocessing.\n\nSilakan unggah dan preprocessing data terlebih dahulu.")
+        else:
+            st.info("Menggunakan data hasil preprocessing.\n\nSilakan unggah dan preprocessing data terlebih dahulu.")
 
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
