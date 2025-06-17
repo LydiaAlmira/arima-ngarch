@@ -367,7 +367,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
 
     if 'preprocessed_data' in st.session_state and not st.session_state['preprocessed_data'].empty:
-        series_to_test = st.session_state['preprocessed_data']
+        series_to_test = st.session_state.get('final_series', st.session_state['preprocessed_data'])
         st.write(f"5 baris pertama data nilai tukar {st.session_state.get('selected_currency', '')} yang akan diuji:")
         st.dataframe(series_to_test.head())
 
@@ -386,9 +386,33 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     st.success("Data **stasioner** (tolak H0: ada akar unit). ✅")
                     st.session_state['is_stationary_adf'] = True
                 else:
+                else:
                     st.warning("Data **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
-                    st.info("Pertimbangkan transformasi lebih lanjut seperti differencing.")
-                    st.session_state['is_stationary_adf'] = False
+                    st.info("Akan dilakukan transformasi differencing secara otomatis... 🔄")
+                    
+                    differenced = series_to_test.diff().dropna() 
+                    st.session_state['differenced_data'] = differenced
+                    st.write("Hasil data setelah differencing (5 baris pertama):")
+                    st.dataframe(differenced.head())
+                    
+                    st.subheader("Uji ADF pada Data Setelah Differencing 📉")
+                    result_adf_diff = adfuller(differenced)
+                    
+                    st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
+                    st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
+                    st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
+                    st.write("**Nilai Kritis:**")
+                    for key, value in result_adf_diff[4].items():
+                        st.write(f"  {key}: {value:.4f}")
+
+                    if result_adf_diff[1] <= 0.05: 
+                        st.success("Setelah differencing, data menjadi **stasioner**. ✅") 
+                        st.session_state['is_stationary_adf'] = True
+                        st.session_state['final_series'] = differenced
+                    else:
+                        st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
+                        st.info("Mungkin dibutuhkan differencing lebih lanjut atau transformasi lain.")
+                        st.session_state['is_stationary_adf'] = False
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e} ❌ Pastikan data numerik dan tidak memiliki nilai tak terbatas/NaN.")
