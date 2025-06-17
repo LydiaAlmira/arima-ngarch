@@ -390,7 +390,6 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                 else:
                     st.warning("Data **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
                     st.info("Akan dilakukan transformasi differencing secara otomatis... 🔄")
-                    
                     differenced = series_to_test.diff().dropna() 
                     st.session_state['differenced_data'] = differenced
                     st.write("Hasil data setelah differencing (5 baris pertama):")
@@ -398,7 +397,6 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     
                     st.subheader("Uji ADF pada Data Setelah Differencing 📉")
                     result_adf_diff = adfuller(differenced)
-                    
                     st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
                     st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
                     st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
@@ -413,14 +411,12 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                         st.session_state['processed_returns'] = differenced 
                     else:
                         st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
-                        st.info("Mungkin dibutuhkan differencing lebih lanjut atau transformasi lain.")
                         st.session_state['is_stationary_adf'] = False
+             except Exception as e:
+                 st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
 
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e} ❌ Pastikan data numerik dan tidak memiliki nilai tak terbatas/NaN.")
-    else:
-        st.warning("Silakan lakukan 'Preprocessing' terlebih dahulu. ⚠️")
-        
+    # Plot ACF & PACF hanya jika data sudah stasioner
+    if result_adf[1] <= 0.05 or result_adf_diff[1] <= 0.05:
         st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
         st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
 
@@ -428,22 +424,18 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
         if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
             try:
-                fig_acf, ax_acf = plt.subplots()
-                plot_acf(series_to_test, lags=lags, alpha=0.05, ax=ax_acf)
-                ax_acf.set_title(f'ACF {st.session_state.get("selected_currency", "")}')
+                fig_acf = plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05)
                 st.pyplot(fig_acf)
 
-                fig_pacf, ax_pacf = plt.subplots()
-                plot_pacf(series_to_test, lags=lags, alpha=0.05, ax=ax_pacf)
-                ax_pacf.set_title(f'PACF {st.session_state.get("selected_currency", "")}')
+                fig_pacf = plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05)
                 st.pyplot(fig_pacf)
 
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
-        else:
-            st.info("Menggunakan data hasil preprocessing.\n\nSilakan unggah dan preprocessing data terlebih dahulu.")
-
+    else:
+        st.info("Data belum stasioner. Silakan jalankan uji ADF terlebih dahulu. ⚠️")
+        
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
     st.write(f"Pisahkan data menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
