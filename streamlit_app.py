@@ -428,12 +428,14 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
         if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
             try:
-                fig_acf = plot_acf(series_to_test, lags=lags, alpha=0.05)
-                plt.title(f'ACF {st.session_state.get("selected_currency", "")}')
+                fig_acf, ax_acf = plt.subplots()
+                plot_acf(series_to_test, lags=lags, alpha=0.05, ax=ax_acf)
+                ax_acf.set_title(f'ACF {st.session_state.get("selected_currency", "")}')
                 st.pyplot(fig_acf)
 
-                fig_pacf = plot_pacf(series_to_test, lags=lags, alpha=0.05)
-                plt.title(f'PACF {st.session_state.get("selected_currency", "")}')
+                fig_pacf, ax_pacf = plt.subplots()
+                plot_pacf(series_to_test, lags=lags, alpha=0.05, ax=ax_pacf)
+                ax_pacf.set_title(f'PACF {st.session_state.get("selected_currency", "")}')
                 st.pyplot(fig_pacf)
 
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
