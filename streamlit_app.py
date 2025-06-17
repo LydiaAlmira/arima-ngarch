@@ -385,7 +385,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                 if result_adf[1] <= 0.05:
                     st.success("Data **stasioner** (tolak H0: ada akar unit). ✅")
                     st.session_state['is_stationary_adf'] = True
-                else:
+                    st.session_state['final_series'] = series_to_test
                 else:
                     st.warning("Data **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
                     st.info("Akan dilakukan transformasi differencing secara otomatis... 🔄")
