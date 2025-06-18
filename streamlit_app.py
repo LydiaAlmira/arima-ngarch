@@ -375,6 +375,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         if st.button("Jalankan Uji ADF ▶️", key="run_adf_test"):
             try:
                 result_adf = adfuller(series_to_test)
+                st.session_state['adf_result'] = result_adf
                 st.session_state['adf_pvalue'] = result_adf[1]
                 st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
                 st.write(f"**P-value:** {result_adf[1]:.4f}")
@@ -398,6 +399,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     
                     st.subheader("Uji ADF pada Data Setelah Differencing 📉")
                     result_adf_diff = adfuller(differenced)
+                    st.session_state['adf_diff_result'] = result_adf_diff
                     st.session_state['adf_diff_pvalue'] = result_adf_diff[1] 
                     st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
                     st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
@@ -418,7 +420,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                  st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
 
     # Plot ACF & PACF hanya jika data sudah stasioner
-    if result_adf[1] <= 0.05 or result_adf_diff[1] <= 0.05:
+    if st.session_state.get('adf_pvalue', 1.0) <= 0.05 or st.session_state.get('adf_diff_pvalue', 1.0) <= 0.05:
         st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
         st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
 
