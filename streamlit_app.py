@@ -170,16 +170,16 @@ st.markdown("""
 st.sidebar.markdown("#### MENU NAVIGASI 🧭")
 
 menu_items = {
-    "HOME 🏠": "home",
-    "INPUT DATA 📥": "input_data",
-    "DATA PREPROCESSING 🧹": "data_preprocessing",
-    "STASIONERITAS DATA 📊": "stasioneritas_data",
-    "DATA SPLITTING ✂️": "data_splitting",
+    "HOME": "home",
+    "INPUT DATA": "input_data",
+    "DATA PREPROCESSING": "data_preprocessing",
+    "STASIONERITAS DATA": "stasioneritas_data",
+    "DATA SPLITTING": "data_splitting",
     "MODEL ARIMA": "pemodelan_arima", # Diubah namanya
     "PREDIKSI ARIMA": "prediksi_arima", # Tambahan menu prediksi untuk ARIMA
     "MODEL NGARCH": "pemodelan_ngarch", # Diubah namanya
     "PREDIKSI NGARCH": "prediksi_ngarch", # Tambahan menu prediksi untuk NGARCH
-    "INTERPRETASI & SARAN 💡": "interpretasi_saran",
+    "INTERPRETASI & SARAN": "interpretasi_saran",
 }
 
 if 'current_page' not in st.session_state:
