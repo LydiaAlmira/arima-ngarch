@@ -375,6 +375,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         if st.button("Jalankan Uji ADF ▶️", key="run_adf_test"):
             try:
                 result_adf = adfuller(series_to_test)
+                st.session_state['adf_pvalue'] = result_adf[1]
                 st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
                 st.write(f"**P-value:** {result_adf[1]:.4f}")
                 st.write(f"**Jumlah Lags Optimal:** {result_adf[2]}")
@@ -397,6 +398,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     
                     st.subheader("Uji ADF pada Data Setelah Differencing 📉")
                     result_adf_diff = adfuller(differenced)
+                    st.session_state['adf_diff_pvalue'] = result_adf_diff[1] 
                     st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
                     st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
                     st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
