@@ -412,7 +412,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     else:
                         st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
                         st.session_state['is_stationary_adf'] = False
-             except Exception as e:
+            except Exception as e:
                  st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
 
     # Plot ACF & PACF hanya jika data sudah stasioner
