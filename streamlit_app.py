@@ -309,6 +309,8 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         df_raw = st.session_state['df_currency_raw'].copy()
+        st.write("Kolom dan tipe data:")
+        st.write(df_raw.dtypes)
         st.write(f"Data nilai tukar mentah untuk {st.session_state.get('selected_currency', '')}: 📊")
         st.dataframe(df_raw.head())
 
@@ -316,7 +318,9 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
         # 🟦 Dropdown untuk memilih kolom numerik
         numeric_cols = [col for col in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[col])]
-        if numeric_cols:
+        if not numeric_cols:
+            st.error("Tidak ditemukan kolom bertipe numerik. Pastikan data nilai tukar berupa angka.")
+        else:
             selected_column = st.selectbox(
                 "Pilih kolom data nilai tukar yang akan diproses:",
                 options=numeric_cols,
