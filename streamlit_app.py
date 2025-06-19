@@ -318,6 +318,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
         # 🟦 Dropdown untuk memilih kolom numerik
         numeric_cols = [col for col in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[col])]
+        
         if not numeric_cols:
             st.error("Tidak ditemukan kolom bertipe numerik. Pastikan data nilai tukar berupa angka.")
         else:
