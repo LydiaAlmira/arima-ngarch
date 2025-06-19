@@ -314,54 +314,68 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
         st.subheader("Pilih Kolom Data dan Transformasi 🔄")
 
-        series_data = df_raw['Value']
+        # 🟦 Dropdown untuk memilih kolom numerik
+        numeric_cols = [col for col in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[col])]
+        if numeric_cols:
+            selected_column = st.selectbox(
+                "Pilih kolom data nilai tukar yang akan diproses:",
+                options=numeric_cols,
+                key="selected_column"
+            )
+            series_data = df_raw[selected_column]
 
-        st.markdown("##### Penanganan Missing Values 🚫❓")
-        if series_data.isnull().any():
-            st.warning(f"Terdapat nilai hilang ({series_data.isnull().sum()} nilai). ⚠️ Mohon tangani:")
-            missing_strategy = st.selectbox("Pilih strategi penanganan missing values:",
+            st.markdown("##### Penanganan Missing Values 🚫❓")
+            if series_data.isnull().any():
+                st.warning(f"Terdapat nilai hilang ({series_data.isnull().sum()} nilai). ⚠️ Mohon tangani:")
+                missing_strategy = st.selectbox("Pilih strategi penanganan missing values:",
                                             ["Drop NA", "Isi dengan Mean", "Isi dengan Median", "Isi dengan Nilai Sebelumnya (FFill)", "Isi dengan Nilai Berikutnya (BFill)"],
                                             key="missing_strategy")
-            if missing_strategy == "Drop NA":
-                series_data = series_data.dropna()
-                st.info("Nilai hilang dihapus. ✅")
-            elif missing_strategy == "Isi dengan Mean":
-                series_data = series_data.fillna(series_data.mean())
-                st.info("Nilai hilang diisi dengan mean. ✅")
-            elif missing_strategy == "Isi dengan Median":
-                series_data = series_data.fillna(series_data.median())
-                st.info("Nilai hilang diisi dengan median. ✅")
-            elif missing_strategy == "Isi dengan Nilai Sebelumnya (FFill)":
-                series_data = series_data.fillna(method='ffill')
-                st.info("Nilai hilang diisi dengan nilai sebelumnya (forward fill). ✅")
-            elif missing_strategy == "Isi dengan Nilai Berikutnya (BFill)":
-                series_data = series_data.fillna(method='bfill')
-                st.info("Nilai hilang diisi dengan nilai berikutnya (backward fill). ✅")
+                if missing_strategy == "Drop NA":
+                    series_data = series_data.dropna()
+                    st.info("Nilai hilang dihapus. ✅")
+                elif missing_strategy == "Isi dengan Mean":
+                    series_data = series_data.fillna(series_data.mean())
+                    st.info("Nilai hilang diisi dengan mean. ✅")
+                elif missing_strategy == "Isi dengan Median":
+                    series_data = series_data.fillna(series_data.median())
+                    st.info("Nilai hilang diisi dengan median. ✅")
+                elif missing_strategy == "Isi dengan Nilai Sebelumnya (FFill)":
+                    series_data = series_data.fillna(method='ffill')
+                    st.info("Nilai hilang diisi dengan nilai sebelumnya (forward fill). ✅")
+                elif missing_strategy == "Isi dengan Nilai Berikutnya (BFill)":
+                    series_data = series_data.fillna(method='bfill')
+                    st.info("Nilai hilang diisi dengan nilai berikutnya (backward fill). ✅")
             else:
-                st.info("Nilai hilang dibiarkan. 🤷")
-        else:
-            st.info("Tidak ada nilai hilang terdeteksi. 👍 Dataset Anda bersih!")
+                st.info("Tidak ada nilai hilang terdeteksi. 👍 Dataset Anda bersih!")
 
-        st.markdown("##### Penanganan Nilai Nol atau Negatif 🚨")
-        zero_or_negative_values = series_data[series_data <= 0]
-        if not zero_or_negative_values.empty:
-            st.warning(f"Terdapat {len(zero_or_negative_values)} nilai nol atau negatif dalam data Anda. Ini akan menyebabkan masalah saat menghitung return logaritmik atau persentase. ❗")
-            clean_strategy = st.selectbox("Pilih strategi penanganan nilai nol/negatif:",
+            st.markdown("##### Penanganan Nilai Nol atau Negatif 🚨")
+            zero_or_negative_values = series_data[series_data <= 0]
+            if not zero_or_negative_values.empty:
+                st.warning(f"Terdapat {len(zero_or_negative_values)} nilai nol atau negatif dalam data Anda. Ini akan menyebabkan masalah saat menghitung return logaritmik atau persentase. ❗")
+                clean_strategy = st.selectbox("Pilih strategi penanganan nilai nol/negatif:",
                                           ["Hapus baris tersebut", "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)"],
                                           key="clean_strategy")
-            if clean_strategy == "Hapus baris tersebut":
-                series_data = series_data[series_data > 0]
-                st.info("Baris dengan nilai nol atau negatif telah dihapus. ✅")
-            elif clean_strategy == "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)":
-                series_data = series_data.replace(0, 1e-6)
-                series_data = series_data.apply(lambda x: 1e-6 if x < 1e-6 else x)
-                st.info("Nilai nol atau negatif telah diganti dengan 1e-6. ✅")
+                if clean_strategy == "Hapus baris tersebut":
+                    series_data = series_data[series_data > 0]
+                    st.info("Baris dengan nilai nol atau negatif telah dihapus. ✅")
+                elif clean_strategy == "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)":
+                    series_data = series_data.replace(0, 1e-6)
+                    series_data = series_data.apply(lambda x: 1e-6 if x < 1e-6 else x)
+                    st.info("Nilai nol atau negatif telah diganti dengan 1e-6. ✅")
+            else:
+                st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
+
+            # Simpan hasil preprocessing ke session_state
+            st.session_state['preprocessed_data'] = series_data
+            st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
+            st.write("Pratinjau data hasil preprocessing:")
+            st.line_chart(series_data)
+        
         else:
-            st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
-
-        # Simpan hasil preprocessing ke session_state
-        st.session_state['preprocessed_data'] = series_data
-
+            st.warning("Tidak ditemukan kolom numerik untuk diproses. Pastikan file yang diunggah sesuai format.")
+    else:
+        st.warning("Silakan unggah data terlebih dahulu. 📂")
+        
 elif st.session_state['current_page'] == 'stasioneritas_data':
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
