@@ -367,7 +367,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                 st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
         
             # 🔁 Pilih jenis return
-            return_type = st.radio("Pilih jenis return yang akan digunakan:", ["Log Return", "Simple Return"], key="return_type")
+            return_type = st.radio("Pilih jenis return yang akan digunakan:", ["Log Return", "Simple Return"], key="return_type_radio")
             st.session_state['return_type'] = return_type
 
             # Simpan hasil preprocessing ke session_state
