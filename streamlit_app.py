@@ -616,63 +616,46 @@ elif st.session_state['current_page'] == 'prediksi_arima':
     # Cek apakah semua elemen penting ada
     if 'model_arima_fit' in st.session_state and \
        'test_data_returns' in st.session_state and \
-       'original_prices_for_reconstruction' in st.session_state:
+       'original_prices_for_reconstruction' in st.session_state and \
+       'train_data_returns' in st.session_state:
 
         model_arima_fit = st.session_state['model_arima_fit']
         test_data_returns = st.session_state['test_data_returns']
         original_prices = st.session_state['original_prices_for_reconstruction']
+        train_data_returns = st.session_state['train_data_returns']
         return_type = st.session_state.get('return_type', None)
-           
-    # ✅ CEK return_type sudah dipilih
-    return_type = st.session_state.get('return_type', None)
 
-    # ❗ Validasi: hentikan eksekusi jika belum tersedia
-    if return_type is None:
-        st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
-        st.stop()
-        
-    if 'model_arima_fit' in st.session_state and 'test_data_returns' in st.session_state and 'original_prices_for_reconstruction' in st.session_state:
-        model_arima_fit = st.session_state['model_arima_fit']
-        test_data_returns = st.session_state['test_data_returns']
-        original_prices = st.session_state['original_prices_for_reconstruction']
-        return_type = st.session_state['return_type']
+        # ❗ Validasi: hentikan eksekusi jika belum tersedia
+        if return_type is None:
+            st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
+            st.stop()
 
         st.subheader("1. Prediksi Return dengan Model ARIMA 🔮")
-        forecast_steps = len(test_data_returns)
-        st.write(f"Melakukan prediksi untuk {forecast_steps} langkah ke depan (sesuai ukuran data pengujian).")
+    
+        max_steps = len(test_data_returns) 
+        forecast_steps = st.slider("Berapa langkah ke depan yang ingin diprediksi?", 1, max_steps, max_steps, step=1)
+        st.write(f"Melakukan prediksi untuk {forecast_steps} langkah ke depan.")
 
         try:
-            # Hitung posisi start dan end berdasarkan panjang data training
+            # Tentukan start dan end untuk prediksi
             start = len(train_data_returns)
             end = start + forecast_steps - 1
 
             # Prediksi return
             arima_forecast_returns = model_arima_fit.predict(start=start, end=end)
+            arima_forecast_returns.index = test_data_returns.index[:forecast_steps]
 
-            # Sinkronkan index hasil prediksi dengan index test data
-            arima_forecast_returns.index = test_data_returns.index
-
-            # Simpan ke session_state
             st.session_state['arima_forecast_returns'] = arima_forecast_returns
-            
             st.success("Prediksi return dengan ARIMA berhasil! 🎉")
             st.write("5 nilai prediksi return pertama:")
             st.dataframe(arima_forecast_returns.head())
-
+            
             st.subheader("2. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
             st.info("Prediksi return perlu diubah kembali menjadi prediksi nilai tukar mata uang agar mudah diinterpretasikan.")
 
             # Ambil harga terakhir dari training untuk rekonstruksi
-            last_train_price = original_prices.loc[model_arima_fit.fittedvalues.index[-1]]
-
-            # Menyelaraskan indeks untuk rekonstruksi
-            # Pastikan original_prices mencakup seluruh periode hingga akhir data pelatihan
-            # dan prediksi dimulai dari observasi pertama data test
-            
-            # Rekonstruksi harga dari return
+            last_train_price = original_prices.loc[train_data_returns.index[-1]]
             reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
-            
-            # Nilai awal untuk rekonstruksi adalah harga terakhir dari data pelatihan
             previous_price = last_train_price
 
             for date, forecast_return in arima_forecast_returns.items():
@@ -722,24 +705,20 @@ elif st.session_state['current_page'] == 'prediksi_arima':
 
             # Menyelaraskan indeks untuk evaluasi
             actual_prices_test = original_prices.loc[test_data_returns.index[0]:test_data_returns.index[-1]]
-            
+            actual_prices_test = actual_prices_test.iloc[:forecast_steps]
+
             # Pastikan indeks prediksi dan aktual sama persis
             common_index = actual_prices_test.index.intersection(reconstructed_prices.index)
             actual_prices_test_aligned = actual_prices_test.loc[common_index]
             predicted_prices_aligned = reconstructed_prices.loc[common_index]
 
             if not actual_prices_test_aligned.empty:
-                # RMSE
                 rmse_arima = np.sqrt(np.mean((predicted_prices_aligned - actual_prices_test_aligned)**2))
-                st.write(f"**RMSE (Root Mean Squared Error):** {rmse_arima:.4f}")
-
-                # MAE
                 mae_arima = np.mean(np.abs(predicted_prices_aligned - actual_prices_test_aligned))
-                st.write(f"**MAE (Mean Absolute Error):** {mae_arima:.4f}")
-
-                # MAPE
-                # Menghindari pembagian oleh nol
                 mape_arima = np.mean(np.abs((actual_prices_test_aligned - predicted_prices_aligned) / actual_prices_test_aligned.replace(0, np.nan))) * 100
+
+                st.write(f"**RMSE (Root Mean Squared Error):** {rmse_arima:.4f}")
+                st.write(f"**MAE (Mean Absolute Error):** {mae_arima:.4f}")
                 st.write(f"**MAPE (Mean Absolute Percentage Error):** {mape_arima:.2f}%")
             else:
                 st.warning("Tidak ada data aktual yang cocok untuk evaluasi. Pastikan rentang indeks data uji sesuai dengan prediksi. 🤷")
