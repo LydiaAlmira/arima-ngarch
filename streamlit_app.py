@@ -526,6 +526,7 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
 
                     st.session_state['model_arima_fit'] = model_arima_fit
                     st.success("Model ARIMA berhasil dilatih! 🎉")
+                   
                     st.subheader("3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
                     st.text(model_arima_fit.summary().as_text())
 
@@ -581,7 +582,6 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
                         else:
                             st.warning("Residual **memiliki efek ARCH/GARCH** signifikan (tolak H0). ⚠️ Ini menunjukkan adanya volatilitas kelompok, sehingga model GARCH/NGARCH cocok untuk residual ini.")
                             st.session_state['arima_residual_has_arch_effect'] = True
-
                     else:
                         st.warning("Residual ARIMA kosong atau tidak valid untuk pengujian. ❌")
 
