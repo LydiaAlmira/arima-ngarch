@@ -5,5 +5,5 @@ scikit-learn
 matplotlib
 plotly
 arch
-statsmodels
-scipy
+statsmodels==0.14.0
+scipy==1.11.3
