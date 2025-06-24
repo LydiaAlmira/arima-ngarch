@@ -369,6 +369,8 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             # Simpan hasil preprocessing ke session_state
             st.session_state['preprocessed_data'] = series_data
             st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
+            # Simpan nilai tukar asli untuk keperluan rekonstruksi prediksi
+            st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
             st.write("Pratinjau data hasil preprocessing:")
             st.line_chart(series_data)
         
@@ -490,6 +492,13 @@ elif st.session_state['current_page'] == 'data_splitting':
             st.session_state['train_data_returns'] = train_data_returns
             st.session_state['test_data_returns'] = test_data_returns
 
+            # Ambil harga asli untuk keperluan prediksi nilai tukar
+            if 'original_prices' in st.session_state:
+                original_prices = st.session_state['original_prices']
+                relevant_index = train_data_returns.index.union(test_data_returns.index)
+                st.session_state['original_prices_for_reconstruction'] = original_prices.loc[original_prices.index.intersection(relevant_index)]
+
+
             st.success("Data berhasil dibagi! ✅")
             st.write(f"Ukuran data pelatihan: {len(train_data_returns)} sampel 💪")
             st.write(f"Ukuran data pengujian: {len(test_data_returns)} sampel 🧪")
@@ -527,6 +536,10 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
                     st.session_state['model_arima_fit'] = model_arima_fit
                     st.session_state['original_prices_for_reconstruction'] = st.session_state.get('full_prices_series', None)
                     st.success("Model ARIMA berhasil dilatih! 🎉")
+
+                    # Simpan original_prices agar bisa digunakan untuk prediksi
+                    if 'original_prices' in st.session_state:
+                        st.session_state['original_prices_for_reconstruction'] = st.session_state['original_prices']
                    
                     st.subheader("3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
                     st.text(model_arima_fit.summary().as_text())
@@ -596,6 +609,7 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
 elif st.session_state['current_page'] == 'prediksi_arima':
     st.markdown('<div class="main-header">PREDIKSI ARIMA (Nilai Tukar) 📈</div>', unsafe_allow_html=True)
     st.write(f"Gunakan model ARIMA yang sudah dilatih untuk memprediksi nilai tukar {st.session_state.get('selected_currency', '')} dan evaluasi performanya. 🚀")
+    st.write("DEBUG - Keys in session_state:", list(st.session_state.keys()))
 
     if 'model_arima_fit' in st.session_state and 'test_data_returns' in st.session_state and 'original_prices_for_reconstruction' in st.session_state:
         model_arima_fit = st.session_state['model_arima_fit']
