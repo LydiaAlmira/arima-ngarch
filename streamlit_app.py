@@ -613,9 +613,20 @@ elif st.session_state['current_page'] == 'prediksi_arima':
     st.markdown('<div class="main-header">PREDIKSI ARIMA (Nilai Tukar) 📈</div>', unsafe_allow_html=True)
     st.write(f"Gunakan model ARIMA yang sudah dilatih untuk memprediksi nilai tukar {st.session_state.get('selected_currency', '')} dan evaluasi performanya. 🚀")
        
-    # ✅ CEK return_type ADA atau TIDAK
+    # Cek apakah semua elemen penting ada
+    if 'model_arima_fit' in st.session_state and \
+       'test_data_returns' in st.session_state and \
+       'original_prices_for_reconstruction' in st.session_state:
+
+        model_arima_fit = st.session_state['model_arima_fit']
+        test_data_returns = st.session_state['test_data_returns']
+        original_prices = st.session_state['original_prices_for_reconstruction']
+        return_type = st.session_state.get('return_type', None)
+           
+    # ✅ CEK return_type sudah dipilih
     return_type = st.session_state.get('return_type', None)
 
+    # ❗ Validasi: hentikan eksekusi jika belum tersedia
     if return_type is None:
         st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
         st.stop()
@@ -631,8 +642,19 @@ elif st.session_state['current_page'] == 'prediksi_arima':
         st.write(f"Melakukan prediksi untuk {forecast_steps} langkah ke depan (sesuai ukuran data pengujian).")
 
         try:
-            arima_forecast_returns = model_arima_fit.predict(start=test_data_returns.index[0], end=test_data_returns.index[-1])
+            # Hitung posisi start dan end berdasarkan panjang data training
+            start = len(train_data_returns)
+            end = start + forecast_steps - 1
+
+            # Prediksi return
+            arima_forecast_returns = model_arima_fit.predict(start=start, end=end)
+
+            # Sinkronkan index hasil prediksi dengan index test data
+            arima_forecast_returns.index = test_data_returns.index
+
+            # Simpan ke session_state
             st.session_state['arima_forecast_returns'] = arima_forecast_returns
+            
             st.success("Prediksi return dengan ARIMA berhasil! 🎉")
             st.write("5 nilai prediksi return pertama:")
             st.dataframe(arima_forecast_returns.head())
@@ -640,25 +662,26 @@ elif st.session_state['current_page'] == 'prediksi_arima':
             st.subheader("2. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
             st.info("Prediksi return perlu diubah kembali menjadi prediksi nilai tukar mata uang agar mudah diinterpretasikan.")
 
+            # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[model_arima_fit.fittedvalues.index[-1]]
 
             # Menyelaraskan indeks untuk rekonstruksi
             # Pastikan original_prices mencakup seluruh periode hingga akhir data pelatihan
             # dan prediksi dimulai dari observasi pertama data test
             
-            # Buat series kosong untuk menyimpan harga yang direkonstruksi
+            # Rekonstruksi harga dari return
             reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
             
             # Nilai awal untuk rekonstruksi adalah harga terakhir dari data pelatihan
             previous_price = last_train_price
 
-            for i, (date, forecast_return) in enumerate(arima_forecast_returns.items()):
+            for date, forecast_return in arima_forecast_returns.items():
                 if return_type == "Log Return":
-                    current_predicted_price = previous_price * np.exp(forecast_return)
+                    current_price = previous_price * np.exp(forecast_return)
                 else: # Simple Return
-                    current_predicted_price = previous_price * (1 + forecast_return)
-                reconstructed_prices.loc[date] = current_predicted_price
-                previous_price = current_predicted_price # Update previous_price for next step
+                    current_price = previous_price * (1 + forecast_return)
+                reconstructed_prices.loc[date] = current_price
+                previous_price = current_price 
 
             st.session_state['arima_forecast_prices'] = reconstructed_prices
             st.success("Prediksi nilai tukar berhasil direkonstruksi! 🎉")
