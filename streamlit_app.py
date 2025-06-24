@@ -368,9 +368,14 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
             # Simpan hasil preprocessing ke session_state
             st.session_state['preprocessed_data'] = series_data
-            st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
-            # Simpan nilai tukar asli untuk keperluan rekonstruksi prediksi
             st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
+
+            # Tambahkan input untuk return type
+            st.markdown("##### Pilih Tipe Return untuk Prediksi 🔁")
+            return_type = st.radio("Jenis return yang akan digunakan:", ["Log Return", "Simple Return"], key="return_type")
+            st.session_state['return_type'] = return_type
+
+            st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
             st.write("Pratinjau data hasil preprocessing:")
             st.line_chart(series_data)
         
@@ -492,12 +497,11 @@ elif st.session_state['current_page'] == 'data_splitting':
             st.session_state['train_data_returns'] = train_data_returns
             st.session_state['test_data_returns'] = test_data_returns
 
-            # Ambil harga asli untuk keperluan prediksi nilai tukar
+            # Simpan harga asli untuk keperluan rekonstruksi prediksi
             if 'original_prices' in st.session_state:
                 original_prices = st.session_state['original_prices']
                 relevant_index = train_data_returns.index.union(test_data_returns.index)
                 st.session_state['original_prices_for_reconstruction'] = original_prices.loc[original_prices.index.intersection(relevant_index)]
-
 
             st.success("Data berhasil dibagi! ✅")
             st.write(f"Ukuran data pelatihan: {len(train_data_returns)} sampel 💪")
