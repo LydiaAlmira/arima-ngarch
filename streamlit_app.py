@@ -612,8 +612,14 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
 elif st.session_state['current_page'] == 'prediksi_arima':
     st.markdown('<div class="main-header">PREDIKSI ARIMA (Nilai Tukar) 📈</div>', unsafe_allow_html=True)
     st.write(f"Gunakan model ARIMA yang sudah dilatih untuk memprediksi nilai tukar {st.session_state.get('selected_currency', '')} dan evaluasi performanya. 🚀")
-    st.write("DEBUG - Keys in session_state:", list(st.session_state.keys()))
+       
+    # ✅ CEK return_type ADA atau TIDAK
+    return_type = st.session_state.get('return_type', None)
 
+    if return_type is None:
+        st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
+        st.stop()
+        
     if 'model_arima_fit' in st.session_state and 'test_data_returns' in st.session_state and 'original_prices_for_reconstruction' in st.session_state:
         model_arima_fit = st.session_state['model_arima_fit']
         test_data_returns = st.session_state['test_data_returns']
