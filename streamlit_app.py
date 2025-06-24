@@ -525,6 +525,7 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
                     model_arima_fit = model_arima.fit()
 
                     st.session_state['model_arima_fit'] = model_arima_fit
+                    st.session_state['original_prices_for_reconstruction'] = st.session_state.get('full_prices_series', None)
                     st.success("Model ARIMA berhasil dilatih! 🎉")
                    
                     st.subheader("3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
