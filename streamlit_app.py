@@ -365,15 +365,14 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                     st.info("Nilai nol atau negatif telah diganti dengan 1e-6. ✅")
             else:
                 st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
+        
+            # 🔁 Pilih jenis return
+            return_type = st.radio("Pilih jenis return yang akan digunakan:", ["Log Return", "Simple Return"], key="return_type")
+            st.session_state['return_type'] = return_type
 
             # Simpan hasil preprocessing ke session_state
             st.session_state['preprocessed_data'] = series_data
             st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
-
-            # Tambahkan input untuk return type
-            st.markdown("##### Pilih Tipe Return untuk Prediksi 🔁")
-            return_type = st.radio("Jenis return yang akan digunakan:", ["Log Return", "Simple Return"], key="return_type")
-            st.session_state['return_type'] = return_type
 
             st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
             st.write("Pratinjau data hasil preprocessing:")
