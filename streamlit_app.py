@@ -188,7 +188,7 @@ menu_items = {
     "DATA PREPROCESSING 🧹": "data_preprocessing",
     "STASIONERITAS DATA 📊": "stasioneritas_data",
     "DATA SPLITTING ✂️": "data_splitting",
-    "ARIMA (Model & Prediksi)": "pemodelan_arima",
+    "ARIMA (Model & Prediksi)": "ARIMA (Model & Prediksi)",
     "GARCH (Model & Prediksi)": "pemodelan_garch",
     "NGARCH (Model & Prediksi)": "pemodelan_ngarch",
     "INTERPRETASI & SARAN 💡": "interpretasi_saran"
