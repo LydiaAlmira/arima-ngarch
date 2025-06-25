@@ -12,8 +12,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import statsmodels.api as sm # Untuk Ljung-Box, Jarque-Bera
 from scipy import stats # Untuk Jarque-Bera test
-
-# Impor model yang relevan
 from statsmodels.tsa.arima.model import ARIMA
 from arch import arch_model
 
@@ -23,6 +21,9 @@ st.set_page_config(
     page_icon='📈',
     layout="wide"
 )
+
+# Cek debug setelah itu:
+st.write("DEBUG current_page:", st.session_state.get('current_page'))
 
 # --- Fungsi Pembaca Data (dengan caching) ---
 @st.cache_data(ttl=86400)
