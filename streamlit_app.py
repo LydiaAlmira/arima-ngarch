@@ -784,7 +784,7 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                     st.success("Model GARCH berhasil dilatih! 🎉")
 
                     # Ringkasan
-                    st.subheader("3. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
+                    st.subheader("2. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
                     st.text(model_garch_fit.summary().as_text())
 
                     # Uji Signifikansi
@@ -876,6 +876,12 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
                 from arch.__future__ import reindexing
 
                 with st.spinner("Melatih model NGARCH..."):
+                    # Ambil residual dari ARIMA
+                    returns_for_ngarch = st.session_state.get("residual_arima", None)
+                    if returns_for_ngarch is None or returns_for_ngarch.isna().all():
+                        st.error("Residual ARIMA tidak tersedia. Latih model ARIMA terlebih dahulu.")
+                        st.stop()
+                        
                 # Dapatkan nilai parameter dari session_state (atau gunakan default jika belum ada)
                     p_ngarch = st.session_state.get('p_ngarch', 1)
                     q_ngarch = st.session_state.get('q_ngarch', 1)
