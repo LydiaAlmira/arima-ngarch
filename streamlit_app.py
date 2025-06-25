@@ -877,87 +877,87 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
 
                 with st.spinner("Melatih model NGARCH..."):
                 # Dapatkan nilai parameter dari session_state (atau gunakan default jika belum ada)
-                p_ngarch = st.session_state.get('p_ngarch', 1)
-                q_ngarch = st.session_state.get('q_ngarch', 1)
-                o_ngarch = st.session_state.get('o_ngarch', 1)
+                    p_ngarch = st.session_state.get('p_ngarch', 1)
+                    q_ngarch = st.session_state.get('q_ngarch', 1)
+                    o_ngarch = st.session_state.get('o_ngarch', 1)
 
                 # Buat dan latih model
-                ngarch_model = arch_model(
-                    returns_for_ngarch,
-                    mean='zero',
-                    vol='Garch',
-                    p=p_ngarch,
-                    o=o_ngarch,
-                    q=q_ngarch,
-                    dist='t'
-                )
-                ngarch_fit = ngarch_model.fit(disp='off')
-                st.session_state['model_ngarch_fit'] = ngarch_fit
-                st.success("Model NGARCH berhasil dilatih! 🎉")
+                    ngarch_model = arch_model(
+                        returns_for_ngarch,
+                        mean='zero',
+                        vol='Garch',
+                        p=p_ngarch,
+                        o=o_ngarch,
+                        q=q_ngarch,
+                        dist='t'
+                    )
+                    ngarch_fit = ngarch_model.fit(disp='off')
+                    st.session_state['model_ngarch_fit'] = ngarch_fit
+                    st.success("Model NGARCH berhasil dilatih! 🎉")
                 
-                st.subheader("2. Ringkasan Model NGARCH")
-                st.text(ngarch_fit.summary().as_text())
+                    st.subheader("2. Ringkasan Model NGARCH")
+                    st.text(ngarch_fit.summary().as_text())
 
-                st.subheader("3. Uji Signifikansi Koefisien NGARCH ✅❌")
-                params = ngarch_fit.params
-                pvals = ngarch_fit.pvalues
-                df_coef = pd.DataFrame({'Koefisien': params, 'P-Value': pvals})
-                st.dataframe(df_coef.style.applymap(
-                    lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
-                    subset=['P-Value']
-                ))
+                    st.subheader("3. Uji Signifikansi Koefisien NGARCH ✅❌")
+                    params = ngarch_fit.params
+                    pvals = ngarch_fit.pvalues
+                    df_coef = pd.DataFrame({'Koefisien': params, 'P-Value': pvals})
+                    st.dataframe(df_coef.style.applymap(
+                        lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
+                        subset=['P-Value']
+                    ))
 
-                # Residual standar
-                std_resid = ngarch_fit.std_resid.dropna()
-                st.session_state['ngarch_std_residuals'] = std_resid
+                    # Residual standar
+                    std_resid = ngarch_fit.std_resid.dropna()
+                    st.session_state['ngarch_std_residuals'] = std_resid
                     
-                st.subheader("4. Evaluasi Residual Standar NGARCH 📊")
-                std_residuals = ngarch_fit.resid / ngarch_fit.conditional_volatility
-                st.session_state['ngarch_std_residuals'] = std_residuals # Simpan residual standar
+                    st.subheader("4. Evaluasi Residual Standar NGARCH 📊")
+                    std_residuals = ngarch_fit.resid / ngarch_fit.conditional_volatility
+                    st.session_state['ngarch_std_residuals'] = std_residuals # Simpan residual standar
 
-                if not std_residuals.empty:
-                    # Plot Residual Standar
-                    st.write("##### Plot Residual Standar NGARCH")
-                    fig_std_res = go.Figure()
-                    fig_std_res.add_trace(go.Scatter(x=std_residuals.index, y=std_residuals, mode='lines', name='Residual Standar NGARCH', line=dict(color='#2ca02c')))
-                    fig_std_res.update_layout(title_text=f'Residual Standar Model NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                    st.plotly_chart(fig_std_res)
+                    if not std_residuals.empty:
+                        # Plot Residual Standar
+                        st.write("##### Plot Residual Standar NGARCH")
+                        fig_std_res = go.Figure()
+                        fig_std_res.add_trace(go.Scatter(x=std_residuals.index, y=std_residuals, mode='lines', name='Residual Standar NGARCH', line=dict(color='#2ca02c')))
+                        fig_std_res.update_layout(title_text=f'Residual Standar Model NGARCH ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
+                        st.plotly_chart(fig_std_res)
 
-                    # Uji Normalitas (Jarque-Bera) pada Residual Standar
-                    st.write("##### Uji Normalitas (Jarque-Bera Test) pada Residual Standar")
-                    jb_test_ngarch = stats.jarque_bera(std_residuals.dropna()) # Pastikan tidak ada NaN
-                    st.write(f"Statistik Jarque-Bera: {jb_test_ngarch[0]:.4f}")
-                    st.write(f"P-value: {jb_test_ngarch[1]:.4f}")
-                    if jb_test_ngarch[1] > 0.05:
-                        st.success("Residual standar **terdistribusi normal** (gagal tolak H0). ✅")
+                        # Uji Normalitas (Jarque-Bera) pada Residual Standar
+                        st.write("##### Uji Normalitas (Jarque-Bera Test) pada Residual Standar")
+                        jb_test_ngarch = stats.jarque_bera(std_residuals.dropna()) # Pastikan tidak ada NaN
+                        st.write(f"Statistik Jarque-Bera: {jb_test_ngarch[0]:.4f}")
+                        st.write(f"P-value: {jb_test_ngarch[1]:.4f}")
+                        if jb_test_ngarch[1] > 0.05:
+                            st.success("Residual standar **terdistribusi normal** (gagal tolak H0). ✅")
+                        else:
+                            st.warning("Residual standar **tidak terdistribusi normal** (tolak H0). ⚠️ Ini masih umum untuk model GARCH dengan distribusi Student's t, asalkan model sudah menangkap volatilitas berkelompok.")
+                            st.info("Jika Anda menggunakan distribusi Student's t atau skew-t, hasil uji normalitas mungkin masih menolak H0, tetapi ini diharapkan karena model dirancang untuk menangani *fat tails*.")
+
+                        # Uji Autokorelasi (Ljung-Box Test) pada Residual Standar
+                        st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Standar")
+                        lb_test_ngarch = sm.stats.acorr_ljungbox(std_residuals.dropna(), lags=[10], return_df=True) # Pastikan tidak ada NaN
+                        st.write(lb_test_ngarch)
+                        if lb_test_ngarch['lb_pvalue'].iloc[0] > 0.05:
+                            st.success("Residual standar **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅")
+                        else:
+                            st.warning("Residual standar **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model NGARCH mungkin belum sepenuhnya menangkap dependensi.")
+                            st.info("Jika ada autokorelasi, pertimbangkan ordo NGARCH yang berbeda atau model GARCH yang lebih kompleks.")
+
+                        # Uji Autokorelasi (Ljung-Box Test) pada Residual Standar Kuadrat
+                        st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Standar Kuadrat")
+                        lb_arch_test_ngarch = sm.stats.acorr_ljungbox(std_residuals.dropna()**2, lags=[10], return_df=True) # Pastikan tidak ada NaN
+                        st.write(lb_arch_test_ngarch)
+                        if lb_arch_test_ngarch['lb_pvalue'].iloc[0] > 0.05:
+                            st.success("Residual standar kuadrat **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅ Ini menunjukkan model NGARCH telah berhasil menangkap efek ARCH/GARCH.")
+                        else:
+                            st.warning("Residual standar kuadrat **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model NGARCH mungkin belum sepenuhnya menangkap volatilitas berkelompok.")
+                            st.info("Jika ada autokorelasi pada residual kuadrat, pertimbangkan ordo NGARCH yang lebih tinggi atau model GARCH yang berbeda (misalnya, EGARCH).")
                     else:
-                        st.warning("Residual standar **tidak terdistribusi normal** (tolak H0). ⚠️ Ini masih umum untuk model GARCH dengan distribusi Student's t, asalkan model sudah menangkap volatilitas berkelompok.")
-                        st.info("Jika Anda menggunakan distribusi Student's t atau skew-t, hasil uji normalitas mungkin masih menolak H0, tetapi ini diharapkan karena model dirancang untuk menangani *fat tails*.")
-
-                    # Uji Autokorelasi (Ljung-Box Test) pada Residual Standar
-                    st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Standar")
-                    lb_test_ngarch = sm.stats.acorr_ljungbox(std_residuals.dropna(), lags=[10], return_df=True) # Pastikan tidak ada NaN
-                    st.write(lb_test_ngarch)
-                    if lb_test_ngarch['lb_pvalue'].iloc[0] > 0.05:
-                        st.success("Residual standar **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅")
-                    else:
-                        st.warning("Residual standar **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model NGARCH mungkin belum sepenuhnya menangkap dependensi.")
-                        st.info("Jika ada autokorelasi, pertimbangkan ordo NGARCH yang berbeda atau model GARCH yang lebih kompleks.")
-
-                    # Uji Autokorelasi (Ljung-Box Test) pada Residual Standar Kuadrat
-                    st.write("##### Uji Autokorelasi (Ljung-Box Test) pada Residual Standar Kuadrat")
-                    lb_arch_test_ngarch = sm.stats.acorr_ljungbox(std_residuals.dropna()**2, lags=[10], return_df=True) # Pastikan tidak ada NaN
-                    st.write(lb_arch_test_ngarch)
-                    if lb_arch_test_ngarch['lb_pvalue'].iloc[0] > 0.05:
-                        st.success("Residual standar kuadrat **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅ Ini menunjukkan model NGARCH telah berhasil menangkap efek ARCH/GARCH.")
-                    else:
-                        st.warning("Residual standar kuadrat **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model NGARCH mungkin belum sepenuhnya menangkap volatilitas berkelompok.")
-                        st.info("Jika ada autokorelasi pada residual kuadrat, pertimbangkan ordo NGARCH yang lebih tinggi atau model GARCH yang berbeda (misalnya, EGARCH).")
-                else:
-                    st.warning("Residual standar NGARCH kosong atau tidak valid untuk pengujian. ❌")
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌ Pastikan residual ARIMA tidak kosong dan ordo NGARCH sesuai.")
-            st.info("Kesalahan umum: data terlalu pendek, atau ada nilai tak terhingga/NaN setelah normalisasi.")
+                        st.warning("Residual standar NGARCH kosong atau tidak valid untuk pengujian. ❌")
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌ Pastikan residual ARIMA tidak kosong dan ordo NGARCH sesuai.")
+                st.info("Kesalahan umum: data terlalu pendek, atau ada nilai tak terhingga/NaN setelah normalisasi.")
   
     # Prediksi NGARCH
     if 'model_ngarch_fit' in st.session_state and 'test_data_returns' in st.session_state:
