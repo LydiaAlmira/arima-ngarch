@@ -1154,8 +1154,11 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
         results_html_ngarch = ngarch_fit.summary().as_html()
         df_ngarch_results = pd.read_html(results_html_ngarch, header=0, index_col=0)[0]
         
-        significant_params_ngarch = df_ngarch_results[df_ngarch_results['P>|z|'] < 0.05]
-        insignificant_params_ngarch = df_ngarch_results[df_ngarch_results['P>|z|'] >= 0.05]
+    if 'P-value' in df_ngarch_results.columns:
+        significant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] < 0.05]
+        insignificant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] >= 0.05]
+    else:
+        st.warning("Kolom P-value tidak ditemukan dalam ringkasan NGARCH. ❌ Struktur tabel mungkin berbeda.")
 
         if not significant_params_ngarch.empty:
             st.success("✅ **Koefisien Signifikan:**")
