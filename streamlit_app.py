@@ -404,6 +404,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             # Simpan hasil preprocessing ke session_state
             st.session_state['preprocessed_data'] = series_data
             st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
+            st.session_state['full_prices_series'] = series_data  # Tambahkan ini
 
             st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
             st.write("Pratinjau data hasil preprocessing:")
