@@ -548,15 +548,17 @@ elif st.session_state['current_page'] == 'data_splitting':
     else:
         st.warning("Tidak ada data yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data', 'Preprocessing', dan 'Stasioneritas Data'. ⚠️⬆️")
 
-elif st.session_state['current_page'] == 'pemodelan_arima':
-    st.markdown('<div class="main-header">MODEL ARIMA (Mean Equation) ⚙️📈</div>', unsafe_allow_html=True)
-    st.write(f"Latih model ARIMA pada data return {st.session_state.get('selected_currency', '')} untuk memodelkan mean (prediksi nilai tukar). 📊")
+elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
+    st.markdown('<div class="main-header">MODEL & PREDIKSI ARIMA 📈</div>', unsafe_allow_html=True)
+    st.write(f"Bangun dan evaluasi model ARIMA pada data return mata uang {st.session_state.get('selected_currency', '')} Gunakan juga untuk memprediksi nilai tukar. 📊")
 
+    # Validasi data
     if 'train_data_returns' in st.session_state and not st.session_state['train_data_returns'].empty:
         train_data_returns = st.session_state['train_data_returns']
-        st.write(f"Data pelatihan return untuk pemodelan ARIMA ({st.session_state.get('selected_currency', '')}):")
+        st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
         st.dataframe(train_data_returns.head())
 
+        # =========== 1. PEMODELAN ARIMA ============
         st.subheader("1. Tentukan Ordo ARIMA (p, d, q) 🔢")
         st.info("Berdasarkan plot ACF dan PACF di bagian 'Stasioneritas Data', Anda dapat memperkirakan ordo (p, q). Ordo differencing (d) harus 0 karena Anda sudah bekerja dengan data return yang diharapkan stasioner.")
         p = st.number_input("Ordo AR (p):", min_value=0, max_value=5, value=1, key="arima_p")
@@ -569,25 +571,27 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
                     model_arima = ARIMA(train_data_returns, order=(p, d, q))
                     model_arima_fit = model_arima.fit()
 
+                    # Simpan ke session state 
                     st.session_state['model_arima_fit'] = model_arima_fit
+                    st.session_state['arima_residuals'] = model_arima_fit.resid.dropna()
                     st.session_state['original_prices_for_reconstruction'] = st.session_state.get('full_prices_series', None)
+
                     st.success("Model ARIMA berhasil dilatih! 🎉")
 
-                    # Simpan original_prices agar bisa digunakan untuk prediksi
-                    if 'original_prices' in st.session_state:
-                        st.session_state['original_prices_for_reconstruction'] = st.session_state['original_prices']
-                   
+                    # Ringkasan 
                     st.subheader("3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
                     st.text(model_arima_fit.summary().as_text())
 
+                    # P-value koefisien 
                     st.subheader("4. Uji Signifikansi Koefisien (P-value) ✅❌")
-                    st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05 (pada tingkat kepercayaan 95%).")
-                    
                     results_table = model_arima_fit.summary().tables[1]
-                    df_results = pd.read_html(results_table.as_html(), header=0, index_col=0)[0]
-                    st.dataframe(df_results[['P>|z|']].style.applymap(lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
-                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
+                    df_results = pd.read_html(model_arima_fit.summary().tables[1].as_html(), header=0, index_col=0)[0]
+                    st.dataframe(df_results[['P>|z|']].style.applymap(
+                        lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
+                    st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05 (pada tingkat kepercayaan 95%).")
+                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
 
+                    # Uji residual
                     st.subheader("5. Uji Asumsi Residual Model ARIMA 📊")
                     arima_residuals = model_arima_fit.resid.dropna()
                     st.session_state['arima_residuals'] = arima_residuals # Simpan residual untuk NGARCH
@@ -639,52 +643,39 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
                 st.error(f"Terjadi kesalahan saat melatih model ARIMA: {e} ❌ Pastikan data pelatihan tidak kosong dan ordo ARIMA sesuai.")
                 st.info("Kesalahan umum: data terlalu pendek untuk ordo yang dipilih, atau ada nilai NaN/Inf.")
     else:
-        st.info("Silakan bagi data terlebih dahulu di halaman 'Data Splitting' untuk melatih model ARIMA. ✂️")
+        st.warning("Data pelatihan return belum tersedia. Silakan lakukan splitting.")
 
-elif st.session_state['current_page'] == 'prediksi_arima':
-    st.markdown('<div class="main-header">PREDIKSI ARIMA (Nilai Tukar) 📈</div>', unsafe_allow_html=True)
-    st.write(f"Gunakan model ARIMA yang sudah dilatih untuk memprediksi nilai tukar {st.session_state.get('selected_currency', '')} dan evaluasi performanya. 🚀")
-       
-    # Cek apakah semua elemen penting ada
+    # ====== PREDIKSI ARIMA ======
     if 'model_arima_fit' in st.session_state and \
        'test_data_returns' in st.session_state and \
-       'original_prices_for_reconstruction' in st.session_state and \
-       'train_data_returns' in st.session_state:
+       'original_prices_for_reconstruction' in st.session_state:
 
         model_arima_fit = st.session_state['model_arima_fit']
         test_data_returns = st.session_state['test_data_returns']
-        original_prices = st.session_state['original_prices_for_reconstruction']
         train_data_returns = st.session_state['train_data_returns']
-        return_type = st.session_state.get('return_type', None)
+        original_prices = st.session_state['original_prices_for_reconstruction']
+        return_type = st.session_state.get('return_type', "Log Return")
 
         # ❗ Validasi: hentikan eksekusi jika belum tersedia
         if return_type is None:
             st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
             st.stop()
 
-        st.subheader("1. Prediksi Return dengan Model ARIMA 🔮")
-    
-        max_steps = len(test_data_returns) 
-        forecast_steps = st.slider("Berapa langkah ke depan yang ingin diprediksi?", 1, max_steps, max_steps, step=1)
-        st.write(f"Melakukan prediksi untuk {forecast_steps} langkah ke depan.")
+        st.subheader("6. Prediksi Return dengan Model ARIMA 🔮")
+        forecast_steps = st.slider("Langkah ke depan:", 1, len(test_data_returns), len(test_data_returns))
+        start = len(train_data_returns)
+        end = start + forecast_steps - 1
 
         try:
-            # Tentukan start dan end untuk prediksi
-            start = len(train_data_returns)
-            end = start + forecast_steps - 1
-
             # Prediksi return
-            arima_forecast_returns = model_arima_fit.predict(start=start, end=end)
-            arima_forecast_returns.index = test_data_returns.index[:forecast_steps]
-
-            st.session_state['arima_forecast_returns'] = arima_forecast_returns
+            forecast_returns = model_arima_fit.predict(start=start, end=end)
+            forecast_returns.index = test_data_returns.index[:forecast_steps]
+            st.session_state['arima_forecast_returns'] = forecast_returns
+            st.dataframe(forecast_returns.head())
             st.success("Prediksi return dengan ARIMA berhasil! 🎉")
-            st.write("5 nilai prediksi return pertama:")
-            st.dataframe(arima_forecast_returns.head())
+         
+            st.subheader("7. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
             
-            st.subheader("2. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
-            st.info("Prediksi return perlu diubah kembali menjadi prediksi nilai tukar mata uang agar mudah diinterpretasikan.")
-
             # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[train_data_returns.index[-1]]
             reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
