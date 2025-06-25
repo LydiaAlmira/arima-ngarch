@@ -177,6 +177,7 @@ menu_items = {
     "DATA SPLITTING": "data_splitting",
     "MODEL ARIMA": "pemodelan_arima", # Diubah namanya
     "PREDIKSI ARIMA": "prediksi_arima", # Tambahan menu prediksi untuk ARIMA
+    "MODEL GARCH": "pemodelan_garch", # Diubah namanya
     "MODEL NGARCH": "pemodelan_ngarch", # Diubah namanya
     "PREDIKSI NGARCH": "prediksi_ngarch", # Tambahan menu prediksi untuk NGARCH
     "INTERPRETASI & SARAN": "interpretasi_saran",
@@ -208,16 +209,37 @@ if st.session_state['current_page'] == 'home':
     st.markdown("""
     <div class="guidance-list">
     <ul>
-        <li><b>HOME 🏠:</b> Halaman utama yang menjelaskan tujuan dan metode prediksi sistem.</li>
-        <li><b>INPUT DATA 📥:</b> Unggah data time series nilai tukar mata uang.</li>
-        <li><b>DATA PREPROCESSING 🧹:</b> Lakukan pembersihan dan transformasi data (misalnya, menghitung return).</li>
-        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas data return dan periksa autokorelasi.</li>
-        <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi latih dan uji.</li>
-        <li><b>MODEL ARIMA :</b> Langkah-langkah untuk membentuk model ARIMA pada data return (untuk prediksi nilai tukar), termasuk uji asumsi dan koefisien.</li>
-        <li><b>PREDIKSI ARIMA :</b> Menampilkan hasil prediksi nilai tukar dari model ARIMA dan evaluasinya.</li>
-        <li><b>MODEL NGARCH :</b> Langkah-langkah untuk membentuk model NGARCH pada residual ARIMA (untuk prediksi volatilitas), termasuk uji asumsi dan koefisien.</li>
-        <li><b>PREDIKSI NGARCH :</b> Menampilkan hasil prediksi volatilitas dari model NGARCH dan visualisasinya.</li>
-        <li><b>INTERPRETASI & SARAN 💡:</b> Penjelasan hasil model dan rekomendasi.</li>
+        <li><b>HOME 🏠:</b> Halaman utama yang menjelaskan tujuan dan metode sistem prediksi.</li>
+        <li><b>INPUT DATA 📥:</b> Unggah data time series nilai tukar mata uang (.csv).</li>
+        <li><b>DATA PREPROCESSING 🧹:</b> Bersihkan dan transformasikan data, termasuk perhitungan return.</li>
+        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas return (ADF), dan analisis ACF & PACF.</li>
+        <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi data latih dan uji.</li>
+        <li><b>MODEL ARIMA (Mean Equation) ⚙️:</b> 
+            Bangun model ARIMA pada data return <i>dan langsung prediksi nilai tukar</i>, termasuk:
+            <ul>
+                <li>Penentuan ordo ARIMA (p,d,q)</li>
+                <li>Uji signifikansi koefisien & asumsi residual</li>
+                <li>Prediksi return & rekonstruksi nilai tukar</li>
+                <li>Evaluasi performa (RMSE, MAE, MAPE)</li>
+            </ul>
+        </li>
+        <li><b>MODEL GARCH (Volatilitas) 📉:</b> 
+            Bangun model GARCH pada residual ARIMA <i>dan langsung prediksi volatilitas</i>, mencakup:
+            <ul>
+                <li>Penentuan ordo GARCH (p,q)</li>
+                <li>Uji signifikansi & normalitas residual standar</li>
+                <li>Prediksi volatilitas dan visualisasi</li>
+            </ul>
+        </li>
+        <li><b>MODEL NGARCH (Volatilitas Asimetris) 🌪️:</b> 
+            Bangun model NGARCH (dengan efek leverage) pada residual ARIMA <i>dan prediksi volatilitas asimetris</i>, termasuk:
+            <ul>
+                <li>Ordo NGARCH (p,o,q)</li>
+                <li>Evaluasi distribusi & autokorelasi residual</li>
+                <li>Visualisasi prediksi volatilitas asimetris</li>
+            </ul>
+        </li>
+        <li><b>INTERPRETASI & SARAN 💡:</b> Penjelasan hasil akhir ARIMA-GARCH/NGARCH, analisis performa model, dan rekomendasi untuk aplikasi praktis.</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
