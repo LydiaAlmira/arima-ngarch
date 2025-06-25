@@ -1138,8 +1138,11 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
     st.markdown("#### Hasil Model NGARCH (Prediksi Volatilitas) 🌪️")
     if 'model_ngarch_fit' in st.session_state:
         ngarch_fit = st.session_state['model_ngarch_fit']
-        st.markdown(f"Model NGARCH({ngarch_fit.model.p},{ngarch_fit.model.o},{ngarch_fit.model.q}) dengan distribusi residual Student's t telah dilatih pada residual ARIMA.")
-        
+        p_ngarch = st.session_state.get('p_ngarch', 1)
+        o_ngarch = st.session_state.get('o_ngarch', 1)
+        q_ngarch = st.session_state.get('q_ngarch', 1)
+        st.markdown(f"Model NGARCH({p_ngarch},{o_ngarch},{q_ngarch}) dengan distribusi residual Student's t telah dilatih pada residual ARIMA.")
+
         st.markdown("Berikut adalah beberapa poin penting dari ringkasan model:")
         st.markdown(f"- **AIC**: {ngarch_fit.aic:.2f}")
         st.info("Nilai AIC dan BIC digunakan untuk membandingkan performa antar model. Nilai lebih rendah menunjukkan model yang lebih baik secara relatif.")
