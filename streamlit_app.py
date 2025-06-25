@@ -1005,9 +1005,10 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
             fig_actual_vs_pred_vol.add_trace(go.Scatter(
                 x=actual_squared_returns.index,
                 y=actual_squared_returns.values,
-                mode='lines',
+                mode='lines', 
                 name='Kuadrat Return Aktual',
-                line=dict(color='#8c564b', opacity=0.7)
+                line=dict(color='#8c564b'),
+                opacity=0.7  # ✅ letakkan di luar line
             ))
 
             # Conditional volatility (in-sample)
