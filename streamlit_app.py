@@ -852,10 +852,8 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
-else:
-    st.info("Silakan latih model ARIMA terlebih dahulu untuk menghasilkan residual. 📈")
         
-elif st.session_state['current_page'] == 'pemodelan_ngarch':
+elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
     st.markdown('<div class="main-header">MODEL NGARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
     st.write(f"Latih model NGARCH pada residual kuadrat dari model ARIMA untuk memodelkan volatilitas {st.session_state.get('selected_currency', '')}. Ini penting untuk memahami risiko. 💥")
 
