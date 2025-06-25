@@ -678,6 +678,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             
             # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[train_data_returns.index[-1]]
+            arima_forecast_returns = forecast_returns 
             reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
             previous_price = last_train_price
 
@@ -694,7 +695,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             st.write("5 nilai prediksi nilai tukar pertama:")
             st.dataframe(reconstructed_prices.head())
 
-            st.subheader("3. Visualisasi Prediksi Nilai Tukar ARIMA vs. Aktual 📊")
+            st.subheader("8. Visualisasi Prediksi Nilai Tukar ARIMA vs. Aktual 📊")
             fig_arima_forecast = go.Figure()
             
             # Plot data historis (latih + uji harga asli)
@@ -723,7 +724,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             )
             st.plotly_chart(fig_arima_forecast)
 
-            st.subheader("4. Evaluasi Model ARIMA 🧪")
+            st.subheader("9. Evaluasi Model ARIMA 🧪")
             st.info("Metrik evaluasi seperti RMSE, MAE, dan MAPE digunakan untuk mengukur akurasi prediksi.")
 
             # Menyelaraskan indeks untuk evaluasi
