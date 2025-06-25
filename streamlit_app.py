@@ -168,7 +168,7 @@ st.markdown("""
             width: 300px !important;
         }
         section[data-testid="stSidebar"] + div {
-            margin-left: 300px;
+        padding-left: 2rem;;
         }
         /* Pastikan teks panjang tombol tidak terpotong */
         .stButton>button {
