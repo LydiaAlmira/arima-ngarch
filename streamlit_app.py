@@ -870,22 +870,31 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
         ngarch_q = st.number_input("Ordo GARCH (q):", min_value=1, max_value=5, value=1, key="ngarch_q")
 
         if st.button("Latih Model NGARCH ▶️", key="train_ngarch_button"):
+
             try:
                 from arch.univariate import GARCH, ConstantMean
                 from arch.__future__ import reindexing
 
                 with st.spinner("Melatih model NGARCH..."):
-                    am = ConstantMean(residuals)
-                    am.volatility = GARCH(p=p_ngarch, o=1, q=q_ngarch, power=2.0, center="conditional")
-                    am.distribution = "t"
-                    ngarch_fit = am.fit(disp="off")
-                    st.session_state['model_ngarch_fit'] = ngarch_fit
+                p_ngarch = st.session_state.get('p_ngarch', 1)
+                q_ngarch = st.session_state.get('q_ngarch', 1)
+                o_ngarch = st.session_state.get('o_ngarch', 1)
+
+                ngarch_model = arch_model(
+                    returns_for_ngarch,
+                    mean='zero',
+                    vol='Garch',
+                    p=p_ngarch,
+                    o=o_ngarch,
+                    q=q_ngarch,
+                    dist='t'
+                )
 
                     st.success("Model NGARCH berhasil dilatih! 🎉")
-                    st.subheader("3. Ringkasan Model NGARCH")
+                    st.subheader("2. Ringkasan Model NGARCH")
                     st.text(ngarch_fit.summary().as_text())
 
-                    st.subheader("4. Uji Signifikansi Koefisien NGARCH ✅❌")
+                    st.subheader("3. Uji Signifikansi Koefisien NGARCH ✅❌")
                     params = ngarch_fit.params
                     pvals = ngarch_fit.pvalues
                     df_coef = pd.DataFrame({'Koefisien': params, 'P-Value': pvals})
@@ -898,7 +907,7 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
                     std_resid = ngarch_fit.std_resid.dropna()
                     st.session_state['ngarch_std_residuals'] = std_resid
                     
-                    st.subheader("5. Evaluasi Residual Standar NGARCH 📊")
+                    st.subheader("4. Evaluasi Residual Standar NGARCH 📊")
                     std_residuals = ngarch_fit.resid / ngarch_fit.conditional_volatility
                     st.session_state['ngarch_std_residuals'] = std_residuals # Simpan residual standar
 
@@ -948,7 +957,7 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
   
     # Prediksi NGARCH
     if 'model_ngarch_fit' in st.session_state and 'test_data_returns' in st.session_state:
-        st.subheader("6. Prediksi Volatilitas Bersyarat (NGARCH) 🔮")
+        st.subheader("5. Prediksi Volatilitas Bersyarat (NGARCH) 🔮")
         ngarch_fit = st.session_state['model_ngarch_fit']
         test_returns = st.session_state['test_data_returns']
         horizon = len(test_returns)
@@ -963,7 +972,7 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
             st.write("Prediksi 5 hari pertama:")
             st.dataframe(predicted_vol_series.head())
 
-            st.subheader("7. Visualisasi Prediksi Volatilitas Bersyarat NGARCH 📊")
+            st.subheader("6. Visualisasi Prediksi Volatilitas Bersyarat NGARCH 📊")
             fig_ngarch_forecast = go.Figure()
 
             # Plot volatilitas bersyarat yang dihasilkan oleh model pada data pelatihan
