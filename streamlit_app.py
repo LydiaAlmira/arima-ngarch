@@ -187,7 +187,7 @@ menu_items = {
     "DATA SPLITTING ✂️": "data_splitting",
     "ARIMA (Model & Prediksi)": "ARIMA (Model & Prediksi)",
     "GARCH (Model & Prediksi)": "GARCH (Model & Prediksi)",
-    "NGARCH (Model & Prediksi)": "pemodelan_ngarch",
+    "NGARCH (Model & Prediksi)": "NGARCH (Model & Prediksi)",
     "INTERPRETASI & SARAN 💡": "interpretasi_saran"
 }
 
@@ -969,10 +969,8 @@ elif st.session_state['current_page'] == 'pemodelan_ngarch':
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌ Pastikan residual ARIMA tidak kosong dan ordo NGARCH sesuai.")
                 st.info("Kesalahan umum: data terlalu pendek, atau ada nilai tak terhingga/NaN setelah normalisasi.")
-    else:
-        st.info("Silakan latih model ARIMA dan dapatkan residualnya di halaman 'Model ARIMA' terlebih dahulu. 📈")
-
-elif st.session_state['current_page'] == 'prediksi_ngarch':
+  
+elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
     st.markdown('<div class="main-header">PREDIKSI NGARCH (Volatilitas) 🌪️</div>', unsafe_allow_html=True)
     st.write(f"Gunakan model NGARCH yang sudah dilatih untuk memprediksi volatilitas bersyarat {st.session_state.get('selected_currency', '')}. 📊")
 
