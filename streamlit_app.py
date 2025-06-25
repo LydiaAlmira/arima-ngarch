@@ -1149,48 +1149,50 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
         st.markdown(f"- **AIC**: {ngarch_fit.aic:.2f}")
         st.info("Nilai AIC dan BIC digunakan untuk membandingkan performa antar model. Nilai lebih rendah menunjukkan model yang lebih baik secara relatif.")
 
-        
-        # Check for significant coefficients
-        results_html_ngarch = ngarch_fit.summary().as_html()
-        df_ngarch_results = pd.read_html(results_html_ngarch, header=0, index_col=0)[0]
-        
-    if 'P-value' in df_ngarch_results.columns:
-        significant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] < 0.05]
-        insignificant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] >= 0.05]
-    else:
-        st.warning("Kolom P-value tidak ditemukan dalam ringkasan NGARCH. ❌ Struktur tabel mungkin berbeda.")
+        # Parsing hasil ringkasan model
+        try:
+            results_html_ngarch = ngarch_fit.summary().as_html()
+            df_ngarch_results = pd.read_html(results_html_ngarch, header=0, index_col=0)[0]
 
-        if not significant_params_ngarch.empty:
-            st.success("✅ **Koefisien Signifikan:**")
-            for index, row in significant_params_ngarch.iterrows():
-                st.write(f"- Parameter `{index}` (P-value: {row['P>|z|']:.4f}) signifikan secara statistik.")
-                if index.startswith('alpha'):
-                    st.write("  - Ini menunjukkan adanya efek ARCH (volatilitas saat ini dipengaruhi oleh ukuran kejutan masa lalu).")
-                elif index.startswith('gamma'):
-                    st.write("  - Ini menunjukkan adanya efek leverage (berita buruk/kejutan negatif memiliki dampak yang lebih besar pada volatilitas dibandingkan berita baik/kejutan positif).")
-                elif index.startswith('beta'):
-                    st.write("  - Ini menunjukkan adanya efek GARCH (volatilitas saat ini dipengaruhi oleh volatilitas masa lalu), yang berarti volatilitas berkelompok.")
-                elif index == 'omega':
-                    st.write("  - Ini adalah konstanta varians bersyarat.")
-                elif index == 'nu': # For Student's t-distribution degrees of freedom
-                    st.write("  - Ini adalah derajat kebebasan distribusi Student's t, menunjukkan *fatness* ekor distribusi residual.")
+            if 'P-value' in df_ngarch_results.columns:
+                significant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] < 0.05]
+                insignificant_params_ngarch = df_ngarch_results[df_ngarch_results['P-value'] >= 0.05]
 
-        else:
-            st.warning("⚠️ **Tidak Ada Koefisien Signifikan:** Tidak ada koefisien ARCH, GARCH, atau Leverage yang signifikan pada tingkat 5%. Ini mungkin menunjukkan bahwa model NGARCH tidak sepenuhnya diperlukan atau efek volatilitas sudah ditangkap oleh ARIMA.")
-        
-        # Check Ljung-Box for NGARCH squared standard residuals
+                if not significant_params_ngarch.empty:
+                    st.success("✅ **Koefisien Signifikan:**")
+                    for index, row in significant_params_ngarch.iterrows():
+                        st.write(f"- Parameter `{index}` (P-value: {row['P-value']:.4f}) signifikan secara statistik.")
+                        if index.startswith('alpha'):
+                            st.write("  - Menunjukkan adanya efek ARCH (kejutan masa lalu berpengaruh pada volatilitas saat ini).")
+                        elif index.startswith('gamma'):
+                            st.write("  - Menunjukkan adanya efek leverage (berita buruk memiliki dampak lebih besar terhadap volatilitas).")
+                        elif index.startswith('beta'):
+                            st.write("  - Menunjukkan adanya efek GARCH (volatilitas masa lalu berpengaruh pada volatilitas saat ini).")
+                        elif index == 'omega':
+                            st.write("  - Merupakan konstanta dalam persamaan varians.")
+                        elif index == 'nu':
+                            st.write("  - Derajat kebebasan Student's t (menggambarkan ketebalan ekor distribusi).")
+                else:
+                    st.warning("⚠️ Tidak ada koefisien signifikan pada tingkat 5%. Mungkin model NGARCH tidak terlalu diperlukan atau perlu dikalibrasi ulang.")
+            else:
+                st.warning("❌ Kolom `P-value` tidak ditemukan. Struktur tabel hasil model mungkin berbeda.")
+
+        except Exception as e:
+            st.error(f"Gagal memproses ringkasan model NGARCH: {e}")
+
+        # Uji autokorelasi pada residual standar kuadrat
         if 'ngarch_std_residuals' in st.session_state and not st.session_state['ngarch_std_residuals'].empty:
             std_residuals = st.session_state['ngarch_std_residuals']
             lb_arch_test_ngarch = sm.stats.acorr_ljungbox(std_residuals.dropna()**2, lags=[10], return_df=True)
             if lb_arch_test_ngarch['lb_pvalue'].iloc[0] > 0.05:
-                st.success("✅ **Residual Standar Kuadrat NGARCH:** Tidak menunjukkan autokorelasi signifikan, yang berarti model NGARCH telah berhasil menangkap volatilitas berkelompok (clustering).")
+                st.success("✅ **Residual Standar Kuadrat NGARCH:** Tidak menunjukkan autokorelasi signifikan. Model NGARCH telah menangkap volatilitas berkelompok.")
             else:
-                st.warning("⚠️ **Residual Standar Kuadrat NGARCH:** Masih menunjukkan autokorelasi signifikan. Ini mengindikasikan bahwa model NGARCH mungkin perlu disempurnakan (misalnya, dengan mengubah ordo atau mencoba model GARCH lain seperti EGARCH) untuk menangkap sepenuhnya dinamika volatilitas.")
+                st.warning("⚠️ **Residual Standar Kuadrat NGARCH:** Masih menunjukkan autokorelasi. Pertimbangkan peningkatan model (misalnya EGARCH atau ordo lebih tinggi).")
         else:
-            st.info("Informasi residual standar NGARCH tidak tersedia.")
+            st.info("Residual standar NGARCH belum tersedia atau kosong.")
 
     else:
-        st.info("Model NGARCH belum dilatih. Silakan kunjungi halaman 'Model NGARCH'.")
+        st.info("Model NGARCH belum dilatih. Silakan latih terlebih dahulu di halaman 'NGARCH (Model & Prediksi)'.")
 
     st.subheader("Saran Umum dan Langkah Selanjutnya 🗺️")
     st.markdown("""
