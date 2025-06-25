@@ -854,19 +854,14 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                 st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
         
 elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
-    st.markdown('<div class="main-header">MODEL NGARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
-    st.write(f"Latih model NGARCH pada residual kuadrat dari model ARIMA untuk memodelkan volatilitas {st.session_state.get('selected_currency', '')}. Ini penting untuk memahami risiko. 💥")
+    st.markdown('<div class="main-header">MODEL & PREDIKSI NGARCH 🌪️</div>', unsafe_allow_html=True)
+    st.write("Modelkan dan prediksi volatilitas bersyarat dengan NGARCH untuk menangkap efek asimetri pada volatilitas. 📊")
 
+    # Pastikan residual ARIMA tersedia
     if 'arima_residuals' in st.session_state and not st.session_state['arima_residuals'].empty:
-        arima_residuals = st.session_state['arima_residuals']
-        st.write(f"Data residual ARIMA ({st.session_state.get('selected_currency', '')}) yang akan digunakan untuk model NGARCH:")
-        st.dataframe(arima_residuals.head())
-
-        if 'arima_residual_has_arch_effect' in st.session_state and st.session_state['arima_residual_has_arch_effect'] == False:
-            st.warning("Berdasarkan Uji Heteroskedastisitas (Ljung-Box pada Residual Kuadrat) di 'MODEL ARIMA', residual ARIMA **tidak menunjukkan efek ARCH/GARCH signifikan**. 😟")
-            st.info("Meskipun demikian, Anda masih bisa melanjutkan melatih model NGARCH, tetapi hasilnya mungkin tidak seefektif jika ada efek ARCH/GARCH yang jelas. Ini mungkin berarti volatilitas konstan atau sudah ditangkap oleh model ARIMA.")
-        else:
-            st.info("Berdasarkan Uji Heteroskedastisitas (Ljung-Box pada Residual Kuadrat) di 'MODEL ARIMA', residual ARIMA **menunjukkan efek ARCH/GARCH signifikan**. Model NGARCH sangat cocok di sini! 👍")
+        residuals = st.session_state['arima_residuals'].dropna()
+        st.write("Data residual ARIMA yang digunakan:")
+        st.dataframe(residuals.head())
 
         st.subheader("1. Tentukan Ordo NGARCH (p, q) 🔢")
         st.info("Untuk NGARCH(p, q), 'p' adalah ordo ARCH (jumlah lag dari residual kuadrat) dan 'q' adalah ordo GARCH (jumlah lag dari varians bersyarat). Umumnya GARCH(1,1) adalah titik awal yang baik.")
@@ -874,14 +869,10 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
         ngarch_o = st.number_input("Ordo Asymmetric (o):", min_value=0, max_value=1, value=1, help="Ordo asimetris untuk efek leverage. Set ke 0 untuk GARCH biasa. Set ke 1 untuk NGARCH/GJR-GARCH.", key="ngarch_o")
         ngarch_q = st.number_input("Ordo GARCH (q):", min_value=1, max_value=5, value=1, key="ngarch_q")
 
-        if st.button("2. Latih Model NGARCH ▶️", key="train_ngarch_button"):
+        if st.button("Latih Model NGARCH ▶️", key="train_ngarch_button"):
             try:
-                # Ambil residual sebagai seri
-                returns_for_ngarch = arima_residuals.dropna()
-
-                if returns_for_ngarch.empty:
-                    st.error("Residual ARIMA kosong atau hanya berisi NaN setelah pembersihan. Tidak dapat melatih NGARCH. ❌")
-                    st.stop()
+                from arch.univariate import GARCH, ConstantMean
+                from arch.__future__ import reindexing
 
                 with st.spinner("Melatih model NGARCH... ⏳"):
                     # mean='zero' karena kita memodelkan residual (yang diharapkan memiliki mean nol)
