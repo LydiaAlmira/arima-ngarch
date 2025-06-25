@@ -186,7 +186,7 @@ menu_items = {
     "STASIONERITAS DATA 📊": "stasioneritas_data",
     "DATA SPLITTING ✂️": "data_splitting",
     "ARIMA (Model & Prediksi)": "ARIMA (Model & Prediksi)",
-    "GARCH (Model & Prediksi)": "pemodelan_garch",
+    "GARCH (Model & Prediksi)": "GARCH (Model & Prediksi)",
     "NGARCH (Model & Prediksi)": "pemodelan_ngarch",
     "INTERPRETASI & SARAN 💡": "interpretasi_saran"
 }
@@ -752,63 +752,55 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
     else:
         st.info("Silakan latih model ARIMA di halaman 'Model ARIMA' dan pastikan data splitting sudah dilakukan. 📈✂️")
 
-elif st.session_state['current_page'] == 'pemodelan_garch':
-    st.markdown('<div class="main-header">MODEL GARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
-    st.write(f"Latih model GARCH pada residual ARIMA ({st.session_state.get('selected_currency', '')}) untuk memodelkan volatilitas. Ini penting dalam analisis risiko. 📉")
+elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
+    st.markdown('<div class="main-header">GARCH (Model & Prediksi) 🌪️📈</div>', unsafe_allow_html=True)
+    st.write(f"Bangun dan evaluasi model GARCH untuk memodelkan volatilitas dari residual ARIMA pada mata uang {st.session_state.get('selected_currency', '')}. Juga prediksi volatilitas ke depan.")
 
     if 'arima_residuals' in st.session_state and not st.session_state['arima_residuals'].empty:
-        arima_residuals = st.session_state['arima_residuals']
-        st.write("Data residual ARIMA yang digunakan:")
-        st.dataframe(arima_residuals.head())
+        arima_residuals = st.session_state['arima_residuals'].dropna()
+        st.write("##### Residual ARIMA yang akan dimodelkan:")
+        st.line_chart(arima_residuals)
 
         st.subheader("1. Tentukan Ordo GARCH (p, q) 🔢")
-        st.info("Untuk GARCH(p, q):\n- **p**: lag residual (ARCH)\n- **q**: lag varians (GARCH)\nUmumnya GARCH(1,1) cukup untuk data keuangan.")
-        garch_p = st.number_input("Ordo ARCH (p):", min_value=1, max_value=5, value=1, key="garch_p")
-        garch_q = st.number_input("Ordo GARCH (q):", min_value=1, max_value=5, value=1, key="garch_q")
+        garch_p = st.number_input("ARCH Order (p):", min_value=1, max_value=5, value=1, key="garch_p")
+        garch_q = st.number_input("GARCH Order (q):", min_value=1, max_value=5, value=1, key="garch_q")
 
         if st.button("2. Latih Model GARCH ▶️", key="train_garch_button"):
             try:
-                returns_for_garch = arima_residuals.dropna()
                 with st.spinner("Melatih model GARCH..."):
-                    garch_model = arch_model(
-                        returns_for_garch,
-                        mean="zero",
-                        vol="Garch",
+                    model_garch = arch_model(
+                        arima_residuals,
+                        mean='zero',
+                        vol='GARCH',
                         p=garch_p,
                         q=garch_q,
-                        dist="t"
+                        dist='t'
                     )
-                    garch_fit = garch_model.fit(disp="off")
-                    st.session_state["model_garch_fit"] = garch_fit
-
+                    model_garch_fit = model_garch.fit(disp='off')
+                    st.session_state["model_garch_fit"] = model_garch_fit
                     st.success("Model GARCH berhasil dilatih! 🎉")
+
+                    # Ringkasan
                     st.subheader("3. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
                     st.text(garch_fit.summary().as_text())
 
+                    # Evaluasi Koefisien
                     st.subheader("4. Uji Signifikansi Koefisien GARCH ✅❌")
-                   
-                    # Ambil parameter dan p-value
-                    params = model_garch_fit.params
-                    pvalues = model_garch_fit.pvalues
-                    tvalues = model_garch_fit.tvalues
-
-                    # Gabungkan ke dalam DataFrame
                     df_garch_coef = pd.DataFrame({
-                        'Koefisien': params,
-                        't-Stat': tvalues,
-                        'P-Value': pvalues
-                    })
+                        'Koefisien': model_garch_fit.params,
+                        't-Stat': model_garch_fit.tvalues,
+                        'P-Value': model_garch_fit.pvalues
 
-                    # Tampilkan dengan warna
+                    })
                     st.dataframe(df_garch_coef.style.applymap(
                         lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
                         subset=['P-Value']
                     ))
-
                     st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
-                    
+
+                    # Uji Residual
                     st.subheader("5. Uji Residual Standar GARCH 📊")
-                    std_resid = garch_fit.resid / garch_fit.conditional_volatility
+                    std_resid = model_garch_fit.resid / model_garch_fit.conditional_volatility
                     st.session_state["garch_std_residuals"] = std_resid
 
                     st.write("##### Plot Residual Standar")
@@ -817,6 +809,7 @@ elif st.session_state['current_page'] == 'pemodelan_garch':
                     fig.update_layout(title="Residual Standar GARCH", xaxis_title="Tanggal", yaxis_title="Nilai")
                     st.plotly_chart(fig)
 
+                    # Uji Normalitas
                     st.write("##### Uji Normalitas (Jarque-Bera)")
                     jb_stat, jb_p = stats.jarque_bera(std_resid.dropna())
                     st.write(f"Statistik JB: {jb_stat:.4f}, P-value: {jb_p:.4f}")
@@ -825,6 +818,7 @@ elif st.session_state['current_page'] == 'pemodelan_garch':
                     else:
                         st.warning("Residual standar **tidak normal** (tolak H0). ⚠️")
 
+                    # Ljung-Box (Autokorelasi)
                     st.write("##### Uji Autokorelasi (Ljung-Box)")
                     lb = sm.stats.acorr_ljungbox(std_resid.dropna(), lags=[10], return_df=True)
                     st.write(lb)
@@ -833,6 +827,7 @@ elif st.session_state['current_page'] == 'pemodelan_garch':
                     else:
                         st.warning("Terdapat autokorelasi signifikan. ⚠️")
 
+                    # ARCH Effect 
                     st.write("##### Uji ARCH Effect (Residual Kuadrat)")
                     lb_sq = sm.stats.acorr_ljungbox(std_resid.dropna()**2, lags=[10], return_df=True)
                     st.write(lb_sq)
@@ -841,11 +836,23 @@ elif st.session_state['current_page'] == 'pemodelan_garch':
                     else:
                         st.warning("Model GARCH mungkin belum cukup menangkap ARCH effect. ⚠️")
 
+                st.subheader("6. Prediksi Volatilitas ke Depan 🔮")
+                forecast_horizon = st.slider("Langkah prediksi ke depan:", 1, 30, 10, key="garch_forecast_steps")
+
+                garch_forecast = model_garch_fit.forecast(horizon=forecast_horizon)
+                volatility_forecast = np.sqrt(garch_forecast.variance.values[-1])
+                forecast_dates = pd.date_range(start=arima_residuals.index[-1] + pd.Timedelta(days=1), periods=forecast_horizon, freq='B')
+                vol_df = pd.Series(volatility_forecast, index=forecast_dates)
+
+                st.session_state['garch_forecast_volatility'] = vol_df
+                st.line_chart(vol_df)
+                st.success("Prediksi volatilitas ke depan selesai! 🌟")
+
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
     else:
-        st.info("Silakan latih model ARIMA terlebih dahulu untuk menghasilkan residual. 📈")
-
+        st.warning("Silakan latih model ARIMA terlebih dahulu agar residual tersedia. 📈")
+        
 elif st.session_state['current_page'] == 'pemodelan_ngarch':
     st.markdown('<div class="main-header">MODEL NGARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
     st.write(f"Latih model NGARCH pada residual kuadrat dari model ARIMA untuk memodelkan volatilitas {st.session_state.get('selected_currency', '')}. Ini penting untuk memahami risiko. 💥")
