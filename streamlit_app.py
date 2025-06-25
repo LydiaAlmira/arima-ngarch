@@ -608,7 +608,6 @@ elif st.session_state['current_page'] == 'pemodelan_arima':
     else:
         st.info("Silakan bagi data terlebih dahulu di halaman 'Data Splitting' untuk melatih model ARIMA. ✂️")
 
-
 elif st.session_state['current_page'] == 'prediksi_arima':
     st.markdown('<div class="main-header">PREDIKSI ARIMA (Nilai Tukar) 📈</div>', unsafe_allow_html=True)
     st.write(f"Gunakan model ARIMA yang sudah dilatih untuk memprediksi nilai tukar {st.session_state.get('selected_currency', '')} dan evaluasi performanya. 🚀")
@@ -729,6 +728,87 @@ elif st.session_state['current_page'] == 'prediksi_arima':
     else:
         st.info("Silakan latih model ARIMA di halaman 'Model ARIMA' dan pastikan data splitting sudah dilakukan. 📈✂️")
 
+elif st.session_state['current_page'] == 'pemodelan_garch':
+    st.markdown('<div class="main-header">MODEL GARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
+    st.write(f"Latih model GARCH pada residual ARIMA ({st.session_state.get('selected_currency', '')}) untuk memodelkan volatilitas. Ini penting dalam analisis risiko. 📉")
+
+    if 'arima_residuals' in st.session_state and not st.session_state['arima_residuals'].empty:
+        arima_residuals = st.session_state['arima_residuals']
+        st.write("Data residual ARIMA yang digunakan:")
+        st.dataframe(arima_residuals.head())
+
+        st.subheader("1. Tentukan Ordo GARCH (p, q) 🔢")
+        st.info("Untuk GARCH(p, q):\n- **p**: lag residual (ARCH)\n- **q**: lag varians (GARCH)\nUmumnya GARCH(1,1) cukup untuk data keuangan.")
+        garch_p = st.number_input("Ordo ARCH (p):", min_value=1, max_value=5, value=1, key="garch_p")
+        garch_q = st.number_input("Ordo GARCH (q):", min_value=1, max_value=5, value=1, key="garch_q")
+
+        if st.button("2. Latih Model GARCH ▶️", key="train_garch_button"):
+            try:
+                returns_for_garch = arima_residuals.dropna()
+                with st.spinner("Melatih model GARCH..."):
+                    garch_model = arch_model(
+                        returns_for_garch,
+                        mean="zero",
+                        vol="Garch",
+                        p=garch_p,
+                        q=garch_q,
+                        dist="t"
+                    )
+                    garch_fit = garch_model.fit(disp="off")
+                    st.session_state["model_garch_fit"] = garch_fit
+
+                    st.success("Model GARCH berhasil dilatih! 🎉")
+                    st.subheader("3. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
+                    st.text(garch_fit.summary().as_text())
+
+                    st.subheader("4. Uji Signifikansi Koefisien GARCH ✅❌")
+                    df_garch = pd.read_html(garch_fit.summary().as_html(), header=0, index_col=0)[0]
+                    if "P>|z|" in df_garch.columns:
+                        st.dataframe(df_garch[["P>|z|"]].style.applymap(
+                            lambda x: "background-color: #d4edda" if x < 0.05 else "background-color: #f8d7da"
+                        ))
+                        st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
+                    else:
+                        st.warning("Kolom 'P>|z|' tidak ditemukan. Tidak bisa tampilkan signifikansi. 🤷")
+
+                    st.subheader("5. Uji Residual Standar GARCH 📊")
+                    std_resid = garch_fit.resid / garch_fit.conditional_volatility
+                    st.session_state["garch_std_residuals"] = std_resid
+
+                    st.write("##### Plot Residual Standar")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=std_resid.index, y=std_resid, mode="lines", name="Std Residual", line=dict(color="green")))
+                    fig.update_layout(title="Residual Standar GARCH", xaxis_title="Tanggal", yaxis_title="Nilai")
+                    st.plotly_chart(fig)
+
+                    st.write("##### Uji Normalitas (Jarque-Bera)")
+                    jb_stat, jb_p = stats.jarque_bera(std_resid.dropna())
+                    st.write(f"Statistik JB: {jb_stat:.4f}, P-value: {jb_p:.4f}")
+                    if jb_p > 0.05:
+                        st.success("Residual standar **terdistribusi normal**. ✅")
+                    else:
+                        st.warning("Residual standar **tidak normal** (tolak H0). ⚠️")
+
+                    st.write("##### Uji Autokorelasi (Ljung-Box)")
+                    lb = sm.stats.acorr_ljungbox(std_resid.dropna(), lags=[10], return_df=True)
+                    st.write(lb)
+                    if lb["lb_pvalue"].iloc[0] > 0.05:
+                        st.success("Tidak ada autokorelasi signifikan. ✅")
+                    else:
+                        st.warning("Terdapat autokorelasi signifikan. ⚠️")
+
+                    st.write("##### Uji ARCH Effect (Residual Kuadrat)")
+                    lb_sq = sm.stats.acorr_ljungbox(std_resid.dropna()**2, lags=[10], return_df=True)
+                    st.write(lb_sq)
+                    if lb_sq["lb_pvalue"].iloc[0] > 0.05:
+                        st.success("ARCH effect berhasil ditangkap oleh model GARCH. ✅")
+                    else:
+                        st.warning("Model GARCH mungkin belum cukup menangkap ARCH effect. ⚠️")
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
+    else:
+        st.info("Silakan latih model ARIMA terlebih dahulu untuk menghasilkan residual. 📈")
 
 elif st.session_state['current_page'] == 'pemodelan_ngarch':
     st.markdown('<div class="main-header">MODEL NGARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
@@ -846,7 +926,6 @@ elif st.session_state['current_page'] == 'pemodelan_ngarch':
                 st.info("Kesalahan umum: data terlalu pendek, atau ada nilai tak terhingga/NaN setelah normalisasi.")
     else:
         st.info("Silakan latih model ARIMA dan dapatkan residualnya di halaman 'Model ARIMA' terlebih dahulu. 📈")
-
 
 elif st.session_state['current_page'] == 'prediksi_ngarch':
     st.markdown('<div class="main-header">PREDIKSI NGARCH (Volatilitas) 🌪️</div>', unsafe_allow_html=True)
