@@ -169,7 +169,7 @@ st.markdown("""
 # --- Sidebar Menu ---
 st.sidebar.markdown("#### MENU NAVIGASI 🧭")
 
-menu = st.sidebar.radio("Pilih Halaman:", [
+[
     "HOME",
     "INPUT DATA",
     "DATA PREPROCESSING",
@@ -181,8 +181,17 @@ menu = st.sidebar.radio("Pilih Halaman:", [
     "INTERPRETASI & SARAN"
 ])
 
-# Atur halaman berdasarkan pilihan radio
-st.session_state['current_page'] = menu
+if 'current_page' not in st.session_state:
+    st.session_state['current_page'] = 'home'
+if 'selected_currency' not in st.session_state:
+    st.session_state['selected_currency'] = None
+if 'variable_name' not in st.session_state:
+    st.session_state['variable_name'] = "Nama Variabel"
+
+for item, key in menu_items.items():
+    if st.sidebar.button(item, key=key):
+        st.session_state['current_page'] = key
+
 
 # --- Area Konten Utama Berdasarkan Halaman yang Dipilih ---
 
