@@ -874,44 +874,31 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
                 from arch.univariate import GARCH, ConstantMean
                 from arch.__future__ import reindexing
 
-                with st.spinner("Melatih model NGARCH... ⏳"):
-                    # mean='zero' karena kita memodelkan residual (yang diharapkan memiliki mean nol)
-                    # p dan q untuk GARCH, o untuk asimetri (NGARCH)
-                    # dist='t' atau 'skewt' sering digunakan untuk data keuangan karena sifat fat tails
-                    ngarch_model = arch_model(
-                        returns_for_ngarch,
-                        mean='zero',
-                        vol='Garch',
-                        p=ngarch_p,
-                        o=ngarch_o,
-                        q=ngarch_q,
-                        dist='t' # Menggunakan distribusi Student's t untuk menangani fat tails
-                    )
-                    ngarch_fit = ngarch_model.fit(disp='off') # disp='off' untuk menonaktifkan output verbose
-
+                with st.spinner("Melatih model NGARCH..."):
+                    am = ConstantMean(residuals)
+                    am.volatility = GARCH(p=p_ngarch, o=1, q=q_ngarch, power=2.0, center="conditional")
+                    am.distribution = "t"
+                    ngarch_fit = am.fit(disp="off")
                     st.session_state['model_ngarch_fit'] = ngarch_fit
+
                     st.success("Model NGARCH berhasil dilatih! 🎉")
-                    st.subheader("3. Ringkasan Model NGARCH (Koefisien dan Statistik) 📝")
+                    st.subheader("3. Ringkasan Model NGARCH")
                     st.text(ngarch_fit.summary().as_text())
 
-                    st.subheader("4. Uji Signifikansi Koefisien NGARCH (P-value) ✅❌")
-                    st.info("Sama seperti ARIMA, koefisien dianggap signifikan jika P-value < 0.05. Fokus pada koefisien $\\omega$, $\\alpha_i$, $\\gamma_i$, dan $\\beta_i$.")
-                    
-                    # Ekstrak tabel parameter
-                    # arch_model summary uses statsmodels-like structure for summary tables
-                    # The parameters table is usually the second table
-                    results_html = ngarch_fit.summary().as_html()
-                    df_ngarch_results = pd.read_html(results_html, header=0, index_col=0)[0]
-                    
-                    # Filter for relevant columns and display
-                    if 'P>|z|' in df_ngarch_results.columns:
-                        st.dataframe(df_ngarch_results[['P>|z|']].style.applymap(lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
-                        st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
-                    else:
-                        st.warning("Kolom 'P>|z|' tidak ditemukan dalam ringkasan model NGARCH. Tidak dapat menampilkan signifikansi koefisien. 🤷")
+                    st.subheader("4. Uji Signifikansi Koefisien NGARCH ✅❌")
+                    params = ngarch_fit.params
+                    pvals = ngarch_fit.pvalues
+                    df_coef = pd.DataFrame({'Koefisien': params, 'P-Value': pvals})
+                    st.dataframe(df_coef.style.applymap(
+                        lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
+                        subset=['P-Value']
+                    ))
 
-                    st.subheader("5. Uji Asumsi Residual Standar NGARCH 📊")
-                    # Residual standar adalah residual dibagi dengan estimasi standar deviasi bersyarat
+                    # Residual standar
+                    std_resid = ngarch_fit.std_resid.dropna()
+                    st.session_state['ngarch_std_residuals'] = std_resid
+                    
+                    st.subheader("5. Evaluasi Residual Standar NGARCH 📊")
                     std_residuals = ngarch_fit.resid / ngarch_fit.conditional_volatility
                     st.session_state['ngarch_std_residuals'] = std_residuals # Simpan residual standar
 
@@ -959,49 +946,24 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
                 st.error(f"Terjadi kesalahan saat melatih model NGARCH: {e} ❌ Pastikan residual ARIMA tidak kosong dan ordo NGARCH sesuai.")
                 st.info("Kesalahan umum: data terlalu pendek, atau ada nilai tak terhingga/NaN setelah normalisasi.")
   
-elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
-    st.markdown('<div class="main-header">PREDIKSI NGARCH (Volatilitas) 🌪️</div>', unsafe_allow_html=True)
-    st.write(f"Gunakan model NGARCH yang sudah dilatih untuk memprediksi volatilitas bersyarat {st.session_state.get('selected_currency', '')}. 📊")
-
+    # Prediksi NGARCH
     if 'model_ngarch_fit' in st.session_state and 'test_data_returns' in st.session_state:
+        st.subheader("6. Prediksi Volatilitas Bersyarat (NGARCH) 🔮")
         ngarch_fit = st.session_state['model_ngarch_fit']
-        test_data_returns = st.session_state['test_data_returns']
-
-        st.subheader("1. Prediksi Volatilitas dengan Model NGARCH 🚀")
-        forecast_steps = len(test_data_returns)
-        st.write(f"Melakukan prediksi volatilitas untuk {forecast_steps} langkah ke depan.")
+        test_returns = st.session_state['test_data_returns']
+        horizon = len(test_returns)
 
         try:
-            # Prediksi conditional variance (varians bersyarat)
-            ngarch_forecast_results = ngarch_fit.forecast(horizon=forecast_steps, start=test_data_returns.index[0])
-            
-            # Ambil prediksi varians dari horizon 1 (prediksi 1 langkah ke depan)
-            # .variance attribute provides a DataFrame of variances, we need the first column (horizon 1)
-            # and slice to match the test data length.
-            # Make sure the index of the forecast aligns with the test_data_returns index
-            
-            # The forecast method's `variance` attribute returns a DataFrame where columns are horizons.
-            # For 1-step ahead prediction for the test set, we often look at the first horizon (h.1).
-            # The index will usually be the start of the forecast.
-            
-            # Let's verify the output structure of ngarch_fit.forecast
-            # It returns an ARCHModelForecast object which has .variance, .mean, .residual_variance
-            # ngarch_forecast_results.variance.values will give a numpy array of forecasts
-            # We need to correctly map these to the dates in test_data_returns.
-            
-            # Conditional volatility (standard deviation) is sqrt of conditional variance
-            predicted_volatility = np.sqrt(ngarch_forecast_results.variance.dropna().iloc[0, :forecast_steps])
-            
-            # Create a Series with the correct index
-            # The dates for the forecast should correspond to the dates in test_data_returns
-            predicted_volatility.index = test_data_returns.index[:forecast_steps]
+            forecast = ngarch_fit.forecast(horizon=horizon, reindex=False)
+            predicted_vol = np.sqrt(forecast.variance.values[-1, :horizon])
+            predicted_vol_series = pd.Series(predicted_vol, index=test_returns.index)
+            st.session_state['ngarch_forecast_volatility'] = predicted_vol_series
 
-            st.session_state['ngarch_forecast_volatility'] = predicted_volatility
             st.success("Prediksi volatilitas dengan NGARCH berhasil! 🎉")
-            st.write("5 nilai prediksi volatilitas pertama:")
-            st.dataframe(predicted_volatility.head())
+            st.write("Prediksi 5 hari pertama:")
+            st.dataframe(predicted_vol_series.head())
 
-            st.subheader("2. Visualisasi Prediksi Volatilitas Bersyarat NGARCH 📊")
+            st.subheader("7. Visualisasi Prediksi Volatilitas Bersyarat NGARCH 📊")
             fig_ngarch_forecast = go.Figure()
 
             # Plot volatilitas bersyarat yang dihasilkan oleh model pada data pelatihan
@@ -1074,13 +1036,11 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
             )
             st.plotly_chart(fig_actual_vs_pred_vol)
 
-
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memprediksi volatilitas dengan NGARCH: {e} ❌")
             st.info("Pastikan model NGARCH sudah dilatih dengan benar.")
     else:
         st.info("Silakan latih model NGARCH di halaman 'Model NGARCH' terlebih dahulu. 🌪️")
-
 
 elif st.session_state['current_page'] == 'interpretasi_saran':
     st.markdown('<div class="main-header">INTERPRETASI & SARAN 💡</div>', unsafe_allow_html=True)
