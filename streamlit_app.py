@@ -1071,8 +1071,13 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
     st.markdown("#### Hasil Model ARIMA (Prediksi Nilai Tukar) 📈")
     if 'model_arima_fit' in st.session_state:
         arima_fit = st.session_state['model_arima_fit']
-        st.markdown(f"Model ARIMA({arima_fit.k_ar},0,{arima_fit.k_ma}) telah dilatih pada data return {st.session_state.get('selected_currency', '')}.")
+        arima_order = arima_fit.model_orders
+        st.markdown(f"Model ARIMA({arima_order.get('ar', '-')},0,{arima_order.get('ma', '-')}) telah dilatih pada data return {st.session_state.get('selected_currency', '')}.")
         st.markdown("Berikut adalah beberapa poin penting dari ringkasan model:")
+        st.markdown(f"- **AIC**: {arima_fit.aic:.2f}")
+        st.markdown(f"- **BIC**: {arima_fit.bic:.2f}")
+        st.info("Nilai AIC dan BIC digunakan untuk membandingkan performa antar model. Nilai lebih rendah menunjukkan model yang lebih baik secara relatif.")
+
         
         # Check for significant coefficients
         results_table = arima_fit.summary().tables[1]
@@ -1133,9 +1138,12 @@ elif st.session_state['current_page'] == 'interpretasi_saran':
     st.markdown("#### Hasil Model NGARCH (Prediksi Volatilitas) 🌪️")
     if 'model_ngarch_fit' in st.session_state:
         ngarch_fit = st.session_state['model_ngarch_fit']
-        st.markdown(f"Model NGARCH({ngarch_fit.p},{ngarch_fit.o},{ngarch_fit.q}) dengan distribusi residual Student's t telah dilatih pada residual ARIMA.")
+        st.markdown(f"Model NGARCH({ngarch_fit.model.p},{ngarch_fit.model.o},{ngarch_fit.model.q}) dengan distribusi residual Student's t telah dilatih pada residual ARIMA.")
         
         st.markdown("Berikut adalah beberapa poin penting dari ringkasan model:")
+        st.markdown(f"- **AIC**: {ngarch_fit.aic:.2f}")
+        st.info("Nilai AIC dan BIC digunakan untuk membandingkan performa antar model. Nilai lebih rendah menunjukkan model yang lebih baik secara relatif.")
+
         
         # Check for significant coefficients
         results_html_ngarch = ngarch_fit.summary().as_html()
