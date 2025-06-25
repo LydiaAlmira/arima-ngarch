@@ -786,15 +786,27 @@ elif st.session_state['current_page'] == 'pemodelan_garch':
                     st.text(garch_fit.summary().as_text())
 
                     st.subheader("4. Uji Signifikansi Koefisien GARCH ✅❌")
-                    df_garch = pd.read_html(garch_fit.summary().as_html(), header=0, index_col=0)[0]
-                    if "P>|z|" in df_garch.columns:
-                        st.dataframe(df_garch[["P>|z|"]].style.applymap(
-                            lambda x: "background-color: #d4edda" if x < 0.05 else "background-color: #f8d7da"
-                        ))
-                        st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P >= 0.05)")
-                    else:
-                        st.warning("Kolom 'P>|z|' tidak ditemukan. Tidak bisa tampilkan signifikansi. 🤷")
+                   
+                    # Ambil parameter dan p-value
+                    params = model_garch_fit.params
+                    pvalues = model_garch_fit.pvalues
+                    tvalues = model_garch_fit.tvalues
 
+                    # Gabungkan ke dalam DataFrame
+                    df_garch_coef = pd.DataFrame({
+                        'Koefisien': params,
+                        't-Stat': tvalues,
+                        'P-Value': pvalues
+                    })
+
+                    # Tampilkan dengan warna
+                    st.dataframe(df_garch_coef.style.applymap(
+                        lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
+                        subset=['P-Value']
+                    ))
+
+                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
+                    
                     st.subheader("5. Uji Residual Standar GARCH 📊")
                     std_resid = garch_fit.resid / garch_fit.conditional_volatility
                     st.session_state["garch_std_residuals"] = std_resid
