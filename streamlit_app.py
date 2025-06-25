@@ -678,8 +678,8 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             
             # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[train_data_returns.index[-1]]
-            arima_forecast_returns = forecast_returns 
             reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
+            for date, forecast_return in forecast_returns.items():
             previous_price = last_train_price
 
             for date, forecast_return in arima_forecast_returns.items():
