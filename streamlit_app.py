@@ -794,8 +794,7 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                         "t-Stat": model_garch_fit.tvalues,
                         "P-Value": model_garch_fit.pvalues
                     })
-                    
-                   st.dataframe(df_coef.style.applymap(
+                    st.dataframe(df_coef.style.applymap(
                        lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
                        subset=["P-Value"]
                     ))
