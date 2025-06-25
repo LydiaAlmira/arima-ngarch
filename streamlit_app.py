@@ -22,9 +22,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Cek debug setelah itu:
-st.write("DEBUG current_page:", st.session_state.get('current_page'))
-
 # --- Fungsi Pembaca Data (dengan caching) ---
 @st.cache_data(ttl=86400)
 def load_data(file_source, default_filename='data/default_currency_multi.csv'):
