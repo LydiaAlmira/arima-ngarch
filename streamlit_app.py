@@ -850,8 +850,8 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                 st.write("5 prediksi volatilitas pertama:")
                 st.dataframe(forecast_vol_series.head())
 
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
 else:
     st.info("Silakan latih model ARIMA terlebih dahulu untuk menghasilkan residual. 📈")
         
