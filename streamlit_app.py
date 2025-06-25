@@ -163,6 +163,18 @@ st.markdown("""
             border: 1px solid #d4d7dc;
             padding: 0.25rem 0.5rem;
         }
+        /* Perlebar sidebar dan geser main content */
+        section[data-testid="stSidebar"] {
+            width: 300px !important;
+        }
+        section[data-testid="stSidebar"] + div {
+            margin-left: 300px;
+        }
+        /* Pastikan teks panjang tombol tidak terpotong */
+        .stButton>button {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }        
     </style>
 """, unsafe_allow_html=True)
 
