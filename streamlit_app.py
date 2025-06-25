@@ -679,10 +679,10 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[train_data_returns.index[-1]]
             arima_forecast_returns = forecast_returns  # Pastikan variabel ini didefinisikan
-            reconstructed_prices = pd.Series(index=arima_forecast_returns.index, dtype=float)
+            reconstructed_prices = pd.Series(index=forecast_returns.index, dtype=float)
             previous_price = last_train_price
 
-            for date, forecast_return in arima_forecast_returns.items():
+            for date, forecast_return in forecast_returns.items():
                 if return_type == "Log Return":
                     current_price = previous_price * np.exp(forecast_return)
                 else: 
