@@ -564,7 +564,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
         d = st.number_input("Ordo Differencing (d):", min_value=0, max_value=0, value=0, help="Untuk data return, 'd' harus 0 karena data sudah distasionerkan.", key="arima_d")
         q = st.number_input("Ordo MA (q):", min_value=0, max_value=5, value=1, key="arima_q")
 
-        if st.button("2. Latih Model ARIMA ▶️", key="train_arima_button"):
+        if st.button("Latih Model ARIMA ▶️", key="train_arima_button"):
             try:
                 with st.spinner("Melatih model ARIMA... ⏳"):
                     model_arima = ARIMA(train_data_returns, order=(p, d, q))
@@ -578,11 +578,11 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
                     st.success("Model ARIMA berhasil dilatih! 🎉")
 
                     # Ringkasan 
-                    st.subheader("3. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
+                    st.subheader("2. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
                     st.text(model_arima_fit.summary().as_text())
 
                     # P-value koefisien 
-                    st.subheader("4. Uji Signifikansi Koefisien (P-value) ✅❌")
+                    st.subheader("3. Uji Signifikansi Koefisien (P-value) ✅❌")
                     results_table = model_arima_fit.summary().tables[1]
                     df_results = pd.read_html(model_arima_fit.summary().tables[1].as_html(), header=0, index_col=0)[0]
                     st.dataframe(df_results[['P>|z|']].style.applymap(
@@ -591,7 +591,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
                     st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
 
                     # Uji residual
-                    st.subheader("5. Uji Asumsi Residual Model ARIMA 📊")
+                    st.subheader("4. Uji Asumsi Residual Model ARIMA 📊")
                     arima_residuals = model_arima_fit.resid.dropna()
                     st.session_state['arima_residuals'] = arima_residuals # Simpan residual untuk NGARCH
 
@@ -660,7 +660,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
             st.stop()
 
-        st.subheader("6. Prediksi Return dengan Model ARIMA 🔮")
+        st.subheader("5. Prediksi Return dengan Model ARIMA 🔮")
         forecast_steps = st.slider("Langkah ke depan:", 1, len(test_data_returns), len(test_data_returns))
         start = len(train_data_returns)
         end = start + forecast_steps - 1
@@ -673,7 +673,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             st.dataframe(forecast_returns.head())
             st.success("Prediksi return dengan ARIMA berhasil! 🎉")
          
-            st.subheader("7. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
+            st.subheader("6. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
             
             # Ambil harga terakhir dari training untuk rekonstruksi
             last_train_price = original_prices.loc[train_data_returns.index[-1]]
@@ -694,7 +694,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             st.write("5 nilai prediksi nilai tukar pertama:")
             st.dataframe(reconstructed_prices.head())
 
-            st.subheader("8. Visualisasi Prediksi Nilai Tukar ARIMA vs. Aktual 📊")
+            st.subheader("7. Visualisasi Prediksi Nilai Tukar ARIMA vs. Aktual 📊")
             fig_arima_forecast = go.Figure()
             
             # Plot data historis (latih + uji harga asli)
@@ -723,7 +723,7 @@ elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
             )
             st.plotly_chart(fig_arima_forecast)
 
-            st.subheader("9. Evaluasi Model ARIMA 🧪")
+            st.subheader("8. Evaluasi Model ARIMA 🧪")
             st.info("Metrik evaluasi seperti RMSE, MAE, dan MAPE digunakan untuk mengukur akurasi prediksi.")
 
             # Menyelaraskan indeks untuk evaluasi
@@ -765,7 +765,7 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
         garch_p = st.number_input("ARCH Order (p):", min_value=1, max_value=5, value=1, key="garch_p")
         garch_q = st.number_input("GARCH Order (q):", min_value=1, max_value=5, value=1, key="garch_q")
 
-        if st.button("2. Latih Model GARCH ▶️", key="train_garch_button"):
+        if st.button("Latih Model GARCH ▶️", key="train_garch_button"):
             try:
                 with st.spinner("Melatih model GARCH..."):
                     model_garch = arch_model(
@@ -781,11 +781,11 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                     st.success("Model GARCH berhasil dilatih! 🎉")
 
                     # Ringkasan
-                    st.subheader("3. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
+                    st.subheader("2. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
                     st.text(garch_fit.summary().as_text())
 
                     # Evaluasi Koefisien
-                    st.subheader("4. Uji Signifikansi Koefisien GARCH ✅❌")
+                    st.subheader("3. Uji Signifikansi Koefisien GARCH ✅❌")
                     df_garch_coef = pd.DataFrame({
                         'Koefisien': model_garch_fit.params,
                         't-Stat': model_garch_fit.tvalues,
@@ -799,7 +799,7 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                     st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
 
                     # Uji Residual
-                    st.subheader("5. Uji Residual Standar GARCH 📊")
+                    st.subheader("4. Uji Residual Standar GARCH 📊")
                     std_resid = model_garch_fit.resid / model_garch_fit.conditional_volatility
                     st.session_state["garch_std_residuals"] = std_resid
 
@@ -836,7 +836,7 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                     else:
                         st.warning("Model GARCH mungkin belum cukup menangkap ARCH effect. ⚠️")
 
-                st.subheader("6. Prediksi Volatilitas ke Depan 🔮")
+                st.subheader("5. Prediksi Volatilitas ke Depan 🔮")
                 forecast_horizon = st.slider("Langkah prediksi ke depan:", 1, 30, 10, key="garch_forecast_steps")
 
                 garch_forecast = model_garch_fit.forecast(horizon=forecast_horizon)
