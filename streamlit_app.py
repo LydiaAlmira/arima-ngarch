@@ -979,8 +979,8 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
             
             # Plot prediksi volatilitas
             fig_ngarch_forecast.add_trace(go.Scatter(
-                x=predicted_volatility.index,
-                y=predicted_volatility.values,
+            x=predicted_vol_series.index,
+            y=predicted_vol_series.values,
                 mode='lines',
                 name='Prediksi Volatilitas (Out-of-Sample)',
                 line=dict(color='#d62728', dash='dash')
@@ -1019,10 +1019,9 @@ elif st.session_state['current_page'] == 'NGARCH (Model & Prediksi)':
                 line=dict(color='#2ca02c', width=2)
             ))
 
-            # Predicted volatility (out-of-sample) squared
             fig_actual_vs_pred_vol.add_trace(go.Scatter(
-                x=predicted_volatility.index,
-                y=predicted_volatility.values**2, # Square it for comparison with squared returns
+                x=predicted_vol_series.index,
+                y=predicted_vol_series.values**2,
                 mode='lines',
                 name='Prediksi Varians (Out-of-Sample)',
                 line=dict(color='#d62728', dash='dash', width=2)
