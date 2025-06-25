@@ -757,9 +757,9 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
     st.write(f"Bangun dan evaluasi model GARCH untuk memodelkan volatilitas dari residual ARIMA pada mata uang {st.session_state.get('selected_currency', '')}. Juga prediksi volatilitas ke depan.")
 
     if 'arima_residuals' in st.session_state and not st.session_state['arima_residuals'].empty:
-        arima_residuals = st.session_state['arima_residuals'].dropna()
-        st.write("##### Residual ARIMA yang akan dimodelkan:")
-        st.line_chart(arima_residuals)
+        arima_residuals = st.session_state['arima_residuals']
+        st.write("Data residual ARIMA yang digunakan:")
+        st.dataframe(arima_residuals.head())
 
         st.subheader("1. Tentukan Ordo GARCH (p, q) 🔢")
         garch_p = st.number_input("ARCH Order (p):", min_value=1, max_value=5, value=1, key="garch_p")
@@ -767,36 +767,39 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
 
         if st.button("Latih Model GARCH ▶️", key="train_garch_button"):
             try:
+                from arch import arch_model
+                returns_for_garch = arima_residuals.dropna()
+                
                 with st.spinner("Melatih model GARCH..."):
-                    model_garch = arch_model(
-                        arima_residuals,
-                        mean='zero',
-                        vol='GARCH',
+                    garch_model = arch_model(
+                        returns_for_garch,
+                        mean="zero",
+                        vol="Garch",
                         p=garch_p,
                         q=garch_q,
-                        dist='t'
+                        dist="t"
                     )
-                    model_garch_fit = model_garch.fit(disp='off')
+                    model_garch_fit = garch_model.fit(disp="off")
                     st.session_state["model_garch_fit"] = model_garch_fit
                     st.success("Model GARCH berhasil dilatih! 🎉")
 
                     # Ringkasan
-                    st.subheader("2. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
-                    st.text(garch_fit.summary().as_text())
+                    st.subheader("3. Ringkasan Model GARCH (Koefisien dan Statistik) 📝")
+                    st.text(model_garch_fit.summary().as_text())
 
-                    # Evaluasi Koefisien
+                    # Uji Signifikansi
                     st.subheader("3. Uji Signifikansi Koefisien GARCH ✅❌")
-                    df_garch_coef = pd.DataFrame({
-                        'Koefisien': model_garch_fit.params,
-                        't-Stat': model_garch_fit.tvalues,
-                        'P-Value': model_garch_fit.pvalues
-
+                    df_coef = pd.DataFrame({
+                        "Koefisien": model_garch_fit.params,
+                        "t-Stat": model_garch_fit.tvalues,
+                        "P-Value": model_garch_fit.pvalues
                     })
-                    st.dataframe(df_garch_coef.style.applymap(
-                        lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
-                        subset=['P-Value']
+                    
+                   st.dataframe(df_coef.style.applymap(
+                       lambda x: 'background-color: #d4edda' if isinstance(x, float) and x < 0.05 else 'background-color: #f8d7da',
+                       subset=["P-Value"]
                     ))
-                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
+                    st.caption("Hijau: signifikan (P < 0.05), Merah: tidak signifikan (P ≥ 0.05)")
 
                     # Uji Residual
                     st.subheader("4. Uji Residual Standar GARCH 📊")
@@ -836,22 +839,22 @@ elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
                     else:
                         st.warning("Model GARCH mungkin belum cukup menangkap ARCH effect. ⚠️")
 
+                # Prediksi Volatilitas ke depan
                 st.subheader("5. Prediksi Volatilitas ke Depan 🔮")
-                forecast_horizon = st.slider("Langkah prediksi ke depan:", 1, 30, 10, key="garch_forecast_steps")
-
+                forecast_horizon = st.slider("Jumlah hari ke depan:", 1, 30, 5, key="forecast_garch_horizon")
                 garch_forecast = model_garch_fit.forecast(horizon=forecast_horizon)
-                volatility_forecast = np.sqrt(garch_forecast.variance.values[-1])
-                forecast_dates = pd.date_range(start=arima_residuals.index[-1] + pd.Timedelta(days=1), periods=forecast_horizon, freq='B')
-                vol_df = pd.Series(volatility_forecast, index=forecast_dates)
+                forecast_volatility = np.sqrt(garch_forecast.variance.values[-1, :])
+                dates = pd.date_range(start=std_resid.index[-1] + pd.Timedelta(days=1), periods=forecast_horizon, freq='B')
+                forecast_vol_series = pd.Series(data=forecast_volatility, index=dates)
+                st.line_chart(forecast_vol_series)
+                st.session_state['garch_forecast_volatility'] = forecast_vol_series
+                st.write("5 prediksi volatilitas pertama:")
+                st.dataframe(forecast_vol_series.head())
 
-                st.session_state['garch_forecast_volatility'] = vol_df
-                st.line_chart(vol_df)
-                st.success("Prediksi volatilitas ke depan selesai! 🌟")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
-    else:
-        st.warning("Silakan latih model ARIMA terlebih dahulu agar residual tersedia. 📈")
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat pelatihan GARCH: {e}")
+else:
+    st.info("Silakan latih model ARIMA terlebih dahulu untuk menghasilkan residual. 📈")
         
 elif st.session_state['current_page'] == 'pemodelan_ngarch':
     st.markdown('<div class="main-header">MODEL NGARCH (Volatility Equation) 🌪️</div>', unsafe_allow_html=True)
