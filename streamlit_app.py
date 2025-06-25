@@ -169,30 +169,20 @@ st.markdown("""
 # --- Sidebar Menu ---
 st.sidebar.markdown("#### MENU NAVIGASI 🧭")
 
-menu_items = {
-    "HOME": "home",
-    "INPUT DATA": "input_data",
-    "DATA PREPROCESSING": "data_preprocessing",
-    "STASIONERITAS DATA": "stasioneritas_data",
-    "DATA SPLITTING": "data_splitting",
-    "MODEL ARIMA": "pemodelan_arima", # Diubah namanya
-    "PREDIKSI ARIMA": "prediksi_arima", # Tambahan menu prediksi untuk ARIMA
-    "MODEL GARCH": "pemodelan_garch", # Diubah namanya
-    "MODEL NGARCH": "pemodelan_ngarch", # Diubah namanya
-    "PREDIKSI NGARCH": "prediksi_ngarch", # Tambahan menu prediksi untuk NGARCH
-    "INTERPRETASI & SARAN": "interpretasi_saran",
-}
+menu = st.sidebar.radio("Pilih Halaman:", [
+    "HOME",
+    "INPUT DATA",
+    "DATA PREPROCESSING",
+    "STASIONERITAS DATA",
+    "DATA SPLITTING",
+    "ARIMA (Model & Prediksi)",
+    "GARCH (Model & Prediksi)",
+    "NGARCH (Model & Prediksi)",
+    "INTERPRETASI & SARAN"
+])
 
-if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = 'home'
-if 'selected_currency' not in st.session_state:
-    st.session_state['selected_currency'] = None
-if 'variable_name' not in st.session_state:
-    st.session_state['variable_name'] = "Nama Variabel"
-
-for item, key in menu_items.items():
-    if st.sidebar.button(item, key=key):
-        st.session_state['current_page'] = key
+# Atur halaman berdasarkan pilihan radio
+st.session_state['current_page'] = menu
 
 # --- Area Konten Utama Berdasarkan Halaman yang Dipilih ---
 
