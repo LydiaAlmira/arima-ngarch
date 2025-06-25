@@ -179,7 +179,7 @@ st.sidebar.markdown("#### MENU NAVIGASI 🧭")
     "GARCH (Model & Prediksi)",
     "NGARCH (Model & Prediksi)",
     "INTERPRETASI & SARAN"
-])
+]
 
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'home'
