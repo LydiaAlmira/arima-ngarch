@@ -169,17 +169,17 @@ st.markdown("""
 # --- Sidebar Menu ---
 st.sidebar.markdown("#### MENU NAVIGASI 🧭")
 
-[
-    "HOME",
-    "INPUT DATA",
-    "DATA PREPROCESSING",
-    "STASIONERITAS DATA",
-    "DATA SPLITTING",
-    "ARIMA (Model & Prediksi)",
-    "GARCH (Model & Prediksi)",
-    "NGARCH (Model & Prediksi)",
-    "INTERPRETASI & SARAN"
-]
+menu_items = {
+    "HOME 🏠": "home",
+    "INPUT DATA 📥": "input_data",
+    "DATA PREPROCESSING 🧹": "data_preprocessing",
+    "STASIONERITAS DATA 📊": "stasioneritas_data",
+    "DATA SPLITTING ✂️": "data_splitting",
+    "ARIMA (Model & Prediksi)": "pemodelan_arima",
+    "GARCH (Model & Prediksi)": "pemodelan_garch",
+    "NGARCH (Model & Prediksi)": "pemodelan_ngarch",
+    "INTERPRETASI & SARAN 💡": "interpretasi_saran"
+}
 
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'home'
