@@ -282,25 +282,6 @@ if st.session_state['current_page'] == 'home':
 
 elif st.session_state['current_page'] == 'input_data':
     st.markdown('<div class="main-header">Input Data 📥</div>', unsafe_allow_html=True)
-    st.write("Di sinilah Anda dapat mengunggah data time series nilai tukar mata uang. Pastikan file CSV memiliki kolom-kolom mata uang. 📁")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.session_state['variable_name'] = st.text_input("Nama Variabel:", value=st.session_state['variable_name'], key="variable_name_input")
-
-    df_general = pd.DataFrame()
-
-    uploaded_file_input_data_page = st.file_uploader("Pilih file CSV data nilai tukar Anda ⬆️", type="csv", key="input_data_uploader")
-
-    if uploaded_file_input_data_page is not None:
-        df_general = load_data(file_source=uploaded_file_input_data_page)
-        st.write("Cek Kolom Numerik yang Terdeteksi:")
-        for col in df_general.columns:
-        st.write(f"{col}: {pd.api.types.is_numeric_dtype(df_general[col])}")
-
-elif st.session_state['current_page'] == 'input_data':
-    st.markdown('<div class="main-header">Input Data 📥</div>', unsafe_allow_html=True)
     st.write("Unggah data time series nilai tukar mata uang. File CSV harus memiliki kolom 'Date' dan satu atau lebih kolom mata uang. 🗂️")
 
     col1, col2 = st.columns(2)
@@ -423,8 +404,6 @@ elif st.session_state['current_page'] == 'input_data':
         ))
         fig_raw.update_layout(title=f'Grafik Nilai Tukar {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
         st.plotly_chart(fig_raw)
-
-
 
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
