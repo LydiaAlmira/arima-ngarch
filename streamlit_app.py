@@ -299,6 +299,11 @@ elif st.session_state['current_page'] == 'input_data':
         st.info("Tidak ada file yang diunggah. Anda bisa mengunggah file Anda sendiri, atau kami akan mencoba memuat data contoh jika tersedia di repositori. ℹ️")
         if st.checkbox("Muat data contoh/default dari repositori? (Jika tersedia) ⚙️", key="load_default_checkbox"):
             df_general = load_data(file_source='default', default_filename='data/default_currency_multi.csv')
+            st.write("🧪 Cek isi DataFrame:")
+            st.dataframe(df_general.head())
+            st.write("📋 Tipe DataFrame:")
+            st.write(df_general.dtypes)
+
         else:
             st.info("Silakan unggah file CSV Anda untuk memulai. 👆")
             st.session_state['df_currency_raw_multi'] = pd.DataFrame()
