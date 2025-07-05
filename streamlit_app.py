@@ -543,210 +543,111 @@ elif st.session_state['current_page'] == 'data_splitting':
     else:
         st.warning("Tidak ada data yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data', 'Preprocessing', dan 'Stasioneritas Data'. ⚠️⬆️")
 
-elif st.session_state['current_page'] == 'ARIMA (Model & Prediksi)':
-    st.markdown('<div class="main-header">MODEL & PREDIKSI ARIMA 📈</div>', unsafe_allow_html=True)
-    st.write(f"Bangun dan evaluasi model ARIMA pada data return mata uang {st.session_state.get('selected_currency', '')} Gunakan juga untuk memprediksi nilai tukar. 📊")
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from statsmodels.tsa.arima.model import ARIMA
+from scipy.stats import kstest
+from statsmodels.stats.diagnostic import acorr_ljungbox
+import pickle
+import os
 
-    # Validasi data
-    if 'train_data_returns' in st.session_state and not st.session_state['train_data_returns'].empty:
-        train_data_returns = st.session_state['train_data_returns']
-        st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
-        st.dataframe(train_data_returns.head())
+st.markdown('<div class="main-header">MODEL & PREDIKSI ARIMA 📈</div>', unsafe_allow_html=True)
+st.write(f"Bangun dan evaluasi model ARIMA pada data return mata uang {st.session_state.get('selected_currency', '')}.")
 
-        # =========== 1. PEMODELAN ARIMA ============
-        st.subheader("1. Tentukan Ordo ARIMA (p, d, q) 🔢")
-        st.info("Berdasarkan plot ACF dan PACF di bagian 'Stasioneritas Data', Anda dapat memperkirakan ordo (p, q). Ordo differencing (d) harus 0 karena Anda sudah bekerja dengan data return yang diharapkan stasioner.")
-        p = st.number_input("Ordo AR (p):", min_value=0, max_value=5, value=1, key="arima_p")
-        d = st.number_input("Ordo Differencing (d):", min_value=0, max_value=0, value=0, help="Untuk data return, 'd' harus 0 karena data sudah distasionerkan.", key="arima_d")
-        q = st.number_input("Ordo MA (q):", min_value=0, max_value=5, value=1, key="arima_q")
+# Validasi data
+if 'train_data_returns' in st.session_state and not st.session_state['train_data_returns'].empty:
+    train_data_returns = st.session_state['train_data_returns']
+    st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
+    st.dataframe(train_data_returns.head())
 
-        if st.button("Latih Model ARIMA ▶️", key="train_arima_button"):
-            try:
-                with st.spinner("Melatih model ARIMA... ⏳"):
-                    model_arima = ARIMA(train_data_returns, order=(p, d, q))
-                    model_arima_fit = model_arima.fit()
+    # 1. Tentukan Ordo ARIMA
+    st.subheader("1. Tentukan Ordo ARIMA (p, d, q) 🔢")
+    p = st.number_input("Ordo AR (p):", min_value=0, max_value=5, value=1, key="arima_p")
+    d = st.number_input("Ordo Differencing (d):", min_value=0, max_value=0, value=0, key="arima_d")
+    q = st.number_input("Ordo MA (q):", min_value=0, max_value=5, value=1, key="arima_q")
 
-                    # Simpan ke session state 
-                    st.session_state['model_arima_fit'] = model_arima_fit
-                    st.session_state['arima_residuals'] = model_arima_fit.resid.dropna()
-                    st.session_state['original_prices_for_reconstruction'] = st.session_state.get('full_prices_series', None)
-
-                    st.success("Model ARIMA berhasil dilatih! 🎉")
-
-                    # Ringkasan 
-                    st.subheader("2. Ringkasan Model ARIMA (Koefisien dan Statistik) 📝")
-                    st.text(model_arima_fit.summary().as_text())
-
-                    # P-value koefisien 
-                    st.subheader("3. Uji Signifikansi Koefisien (P-value) ✅❌")
-                    results_table = model_arima_fit.summary().tables[1]
-                    df_results = pd.read_html(model_arima_fit.summary().tables[1].as_html(), header=0, index_col=0)[0]
-                    st.dataframe(df_results[['P>|z|']].style.applymap(
-                        lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
-                    st.info("P-value untuk setiap koefisien menunjukkan signifikansi statistik. Koefisien dianggap signifikan jika P-value < 0.05 (pada tingkat kepercayaan 95%).")
-                    st.caption("Hijau: Signifikan (P < 0.05), Merah: Tidak Signifikan (P ≥ 0.05)")
-
-                    # Uji residual
-                    st.subheader("4. Uji Asumsi Residual Model ARIMA 📊")
-                    arima_residuals = model_arima_fit.resid.dropna()
-                    st.session_state['arima_residuals'] = arima_residuals # Simpan residual untuk NGARCH
-
-                    if not arima_residuals.empty:
-                        # Plot Residual
-                        st.write("##### Plot Residual ARIMA")
-                        fig_res = go.Figure()
-                        fig_res.add_trace(go.Scatter(x=arima_residuals.index, y=arima_residuals, mode='lines', name='Residual ARIMA', line=dict(color='#4c78a8')))
-                        fig_res.update_layout(title_text=f'Residual Model ARIMA ({st.session_state.get("selected_currency", "")})', xaxis_rangeslider_visible=True)
-                        st.plotly_chart(fig_res)
-
-                        # Uji Normalitas (Jarque-Bera)
-                        st.write("##### Uji Normalitas (Jarque-Bera Test)")
-                        jb_test = stats.jarque_bera(arima_residuals)
-                        st.write(f"Statistik Jarque-Bera: {jb_test[0]:.4f}")
-                        st.write(f"P-value: {jb_test[1]:.4f}")
-                        if jb_test[1] > 0.05:
-                            st.success("Residual **terdistribusi normal** (gagal tolak H0). ✅")
-                        else:
-                            st.warning("Residual **tidak terdistribusi normal** (tolak H0). ⚠️ (umum untuk data keuangan)")
-                            st.info("Ketidaknormalan residual sering terjadi pada data keuangan karena sifat *fat tails* dan *skewness*. Model GARCH dapat mengatasi hal ini.")
-
-                        # Uji Autokorelasi (Ljung-Box Test)
-                        st.write("##### Uji Autokorelasi (Ljung-Box Test)")
-                        lb_test = sm.stats.acorr_ljungbox(arima_residuals, lags=[10], return_df=True) # Uji pada lags 10
-                        st.write(lb_test)
-                        if lb_test['lb_pvalue'].iloc[0] > 0.05:
-                            st.success("Residual **tidak memiliki autokorelasi** signifikan (gagal tolak H0). ✅")
-                        else:
-                            st.warning("Residual **memiliki autokorelasi** signifikan (tolak H0). ⚠️ Ini menunjukkan model ARIMA mungkin belum menangkap semua pola.")
-                            st.info("Jika ada autokorelasi, pertimbangkan ordo ARIMA yang berbeda atau model yang lebih kompleks.")
-
-                        # Uji Heteroskedastisitas (ARCH Test - Ljung-Box pada residual kuadrat)
-                        st.write("##### Uji Heteroskedastisitas (Ljung-Box Test pada Residual Kuadrat)")
-                        lb_arch_test = sm.stats.acorr_ljungbox(arima_residuals**2, lags=[10], return_df=True) # Uji pada lags 10
-                        st.write(lb_arch_test)
-                        if lb_arch_test['lb_pvalue'].iloc[0] > 0.05:
-                            st.success("Residual **tidak memiliki efek ARCH/GARCH** signifikan (gagal tolak H0). ✅")
-                            st.info("Jika tidak ada efek ARCH/GARCH, mungkin model NGARCH tidak diperlukan, atau residual ARIMA sudah sangat baik.")
-                            st.session_state['arima_residual_has_arch_effect'] = False
-                        else:
-                            st.warning("Residual **memiliki efek ARCH/GARCH** signifikan (tolak H0). ⚠️ Ini menunjukkan adanya volatilitas kelompok, sehingga model GARCH/NGARCH cocok untuk residual ini.")
-                            st.session_state['arima_residual_has_arch_effect'] = True
-                    else:
-                        st.warning("Residual ARIMA kosong atau tidak valid untuk pengujian. ❌")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat melatih model ARIMA: {e} ❌ Pastikan data pelatihan tidak kosong dan ordo ARIMA sesuai.")
-                st.info("Kesalahan umum: data terlalu pendek untuk ordo yang dipilih, atau ada nilai NaN/Inf.")
-    else:
-        st.warning("Data pelatihan return belum tersedia. Silakan lakukan splitting.")
-
-    # ====== PREDIKSI ARIMA ======
-    if 'model_arima_fit' in st.session_state and \
-       'test_data_returns' in st.session_state and \
-       'original_prices_for_reconstruction' in st.session_state:
-
-        model_arima_fit = st.session_state['model_arima_fit']
-        test_data_returns = st.session_state['test_data_returns']
-        train_data_returns = st.session_state['train_data_returns']
-        original_prices = st.session_state['original_prices_for_reconstruction']
-        return_type = st.session_state.get('return_type', "Log Return")
-
-        # ❗ Validasi: hentikan eksekusi jika belum tersedia
-        if return_type is None:
-            st.warning("Jenis return belum dipilih atau tidak tersedia di session. Silakan lakukan preprocessing ulang. ⚠️")
-            st.stop()
-
-        st.subheader("5. Prediksi Return dengan Model ARIMA 🔮")
-        forecast_steps = st.slider("Langkah ke depan:", 1, len(test_data_returns), len(test_data_returns))
-        start = len(train_data_returns)
-        end = start + forecast_steps - 1
-
+    if st.button("Latih Model ARIMA ▶️", key="train_arima_button"):
         try:
-            # Prediksi return
-            forecast_returns = model_arima_fit.predict(start=start, end=end)
-            forecast_returns.index = test_data_returns.index[:forecast_steps]
-            st.session_state['arima_forecast_returns'] = forecast_returns
-            st.dataframe(forecast_returns.head())
-            st.success("Prediksi return dengan ARIMA berhasil! 🎉")
-         
-            st.subheader("6. Rekonstruksi Prediksi Nilai Tukar dari Return 🔄")
-            
-            # Ambil harga terakhir dari training untuk rekonstruksi
-            last_train_price = original_prices.loc[train_data_returns.index[-1]]
-            arima_forecast_returns = forecast_returns  # Pastikan variabel ini didefinisikan
-            reconstructed_prices = pd.Series(index=forecast_returns.index, dtype=float)
-            previous_price = last_train_price
+            with st.spinner("Melatih model ARIMA..."):
+                model_arima = ARIMA(train_data_returns, order=(p, d, q))
+                model_arima_fit = model_arima.fit()
 
-            for date, forecast_return in forecast_returns.items():
-                if return_type == "Log Return":
-                    current_price = previous_price * np.exp(forecast_return)
-                else: 
-                    current_price = previous_price * (1 + forecast_return)
-                reconstructed_prices.loc[date] = current_price
-                previous_price = current_price 
+                st.session_state['model_arima_fit'] = model_arima_fit
+                st.session_state['arima_residuals'] = model_arima_fit.resid.dropna()
 
-            st.session_state['arima_forecast_prices'] = reconstructed_prices
-            st.success("Prediksi nilai tukar berhasil direkonstruksi! 🎉")
-            st.write("5 nilai prediksi nilai tukar pertama:")
-            st.dataframe(reconstructed_prices.head())
+                st.success("Model ARIMA berhasil dilatih! 🎉")
 
-            st.subheader("7. Visualisasi Prediksi Nilai Tukar ARIMA vs. Aktual 📊")
-            fig_arima_forecast = go.Figure()
-            
-            # Plot data historis (latih + uji harga asli)
-            fig_arima_forecast.add_trace(go.Scatter(
-                x=original_prices.index,
-                y=original_prices.values,
-                mode='lines',
-                name=f'Nilai Tukar Asli ({st.session_state.get("selected_currency", "")})',
-                line=dict(color='#1f77b4')
-            ))
+                st.subheader("2. Ringkasan Model ARIMA")
+                st.text(model_arima_fit.summary().as_text())
 
-            # Plot prediksi ARIMA
-            fig_arima_forecast.add_trace(go.Scatter(
-                x=reconstructed_prices.index,
-                y=reconstructed_prices.values,
-                mode='lines',
-                name='Prediksi ARIMA (Nilai Tukar)',
-                line=dict(color='#ff7f0e', dash='dash')
-            ))
+                st.subheader("3. Uji Signifikansi Koefisien")
+                df_results = pd.read_html(model_arima_fit.summary().tables[1].as_html(), header=0, index_col=0)[0]
+                st.dataframe(df_results[['P>|z|']].style.applymap(
+                    lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
 
-            fig_arima_forecast.update_layout(
-                title=f'Prediksi Nilai Tukar {st.session_state.get("selected_currency", "")} dengan ARIMA vs. Data Aktual',
-                xaxis_title='Tanggal',
-                yaxis_title='Nilai Tukar',
-                xaxis_rangeslider_visible=True
-            )
-            st.plotly_chart(fig_arima_forecast)
+                st.subheader("4. Uji Asumsi Residual ARIMA")
+                resid = model_arima_fit.resid.dropna()
 
-            st.subheader("8. Evaluasi Model ARIMA 🧪")
-            st.info("Metrik evaluasi seperti RMSE, MAE, dan MAPE digunakan untuk mengukur akurasi prediksi.")
+                # Plot Residual
+                fig_res = go.Figure()
+                fig_res.add_trace(go.Scatter(x=resid.index, y=resid, mode='lines', name='Residual ARIMA'))
+                fig_res.update_layout(title_text='Residual ARIMA', xaxis_rangeslider_visible=True)
+                st.plotly_chart(fig_res)
 
-            # Menyelaraskan indeks untuk evaluasi
-            actual_prices_test = original_prices.loc[test_data_returns.index[0]:test_data_returns.index[-1]]
-            actual_prices_test = actual_prices_test.iloc[:forecast_steps]
+                # KS Test
+                standardized_resid = (resid - np.mean(resid)) / np.std(resid)
+                ks_stat, ks_pvalue = kstest(standardized_resid, 'norm')
+                st.write(f"Statistik Kolmogorov-Smirnov: {ks_stat:.4f}")
+                st.write(f"P-value: {ks_pvalue:.4f}")
+                if ks_pvalue > 0.05:
+                    st.success("Residual terdistribusi normal. (Gagal tolak H0)")
+                else:
+                    st.warning("Residual tidak normal (Tolak H0).")
 
-            # Pastikan indeks prediksi dan aktual sama persis
-            common_index = actual_prices_test.index.intersection(reconstructed_prices.index)
-            actual_prices_test_aligned = actual_prices_test.loc[common_index]
-            predicted_prices_aligned = reconstructed_prices.loc[common_index]
+                # Ljung-Box
+                lb_test = acorr_ljungbox(resid, lags=[10], return_df=True)
+                st.write("Ljung-Box Test:", lb_test)
+                if lb_test['lb_pvalue'].iloc[0] > 0.05:
+                    st.success("Tidak ada autokorelasi signifikan (Gagal tolak H0)")
+                else:
+                    st.warning("Terdapat autokorelasi signifikan (Tolak H0)")
 
-            if not actual_prices_test_aligned.empty:
-                rmse_arima = np.sqrt(np.mean((predicted_prices_aligned - actual_prices_test_aligned)**2))
-                mae_arima = np.mean(np.abs(predicted_prices_aligned - actual_prices_test_aligned))
-                mape_arima = np.mean(np.abs((actual_prices_test_aligned - predicted_prices_aligned) / actual_prices_test_aligned.replace(0, np.nan))) * 100
+                # ARCH Test (Ljung-Box pada residual kuadrat)
+                lb_arch = acorr_ljungbox(resid**2, lags=[10], return_df=True)
+                st.write("ARCH Test (Ljung-Box pada residual kuadrat):", lb_arch)
+                has_arch = lb_arch['lb_pvalue'].iloc[0] < 0.05
+                if not has_arch:
+                    st.success("Tidak ada efek ARCH signifikan (Gagal tolak H0)")
+                else:
+                    st.warning("Ada efek ARCH signifikan (Tolak H0)")
 
-                st.write(f"**RMSE (Root Mean Squared Error):** {rmse_arima:.4f}")
-                st.write(f"**MAE (Mean Absolute Error):** {mae_arima:.4f}")
-                st.write(f"**MAPE (Mean Absolute Percentage Error):** {mape_arima:.2f}%")
-            else:
-                st.warning("Tidak ada data aktual yang cocok untuk evaluasi. Pastikan rentang indeks data uji sesuai dengan prediksi. 🤷")
+                # Simpan hasil uji ke session dan optional pickle
+                st.session_state['arima_residual_has_arch_effect'] = has_arch
+                uji_asumsi = {
+                    'ks_stat': ks_stat,
+                    'ks_pvalue': ks_pvalue,
+                    'ljung_box_stat': lb_test['lb_stat'].iloc[0],
+                    'ljung_box_pvalue': lb_test['lb_pvalue'].iloc[0],
+                    'arch_stat': lb_arch['lb_stat'].iloc[0],
+                    'arch_pvalue': lb_arch['lb_pvalue'].iloc[0],
+                    'has_arch_effect': has_arch
+                }
+
+                mata_uang = st.session_state.get("selected_currency", "")
+                file_name = f"models/uji_asumsi_arima_{mata_uang.lower()}.pkl"
+                try:
+                    with open(file_name, "wb") as f:
+                        pickle.dump(uji_asumsi, f)
+                    st.info(f"Hasil uji asumsi disimpan: {file_name}")
+                except Exception as e:
+                    st.warning(f"Gagal menyimpan hasil uji asumsi: {e}")
 
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat memprediksi atau merekonstruksi nilai tukar dengan ARIMA: {e} ❌")
-            st.info("Pastikan model ARIMA sudah dilatih dengan benar dan data test tersedia.")
-    else:
-        st.info("Silakan latih model ARIMA di halaman 'Model ARIMA' dan pastikan data splitting sudah dilakukan. 📈✂️")
+            st.error(f"Gagal melatih model ARIMA: {e}")
+else:
+    st.warning("Data pelatihan belum tersedia. Silakan lakukan splitting terlebih dahulu.")
 
 elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
     st.markdown('<div class="main-header">GARCH (Model & Prediksi) 🌪️📈</div>', unsafe_allow_html=True)
