@@ -20,18 +20,20 @@ import pickle
 import os
 
 def load_data(file_source=None, default_filename=None):
+    import pandas as pd
+
     try:
         if file_source == 'default':
             df = pd.read_csv(default_filename, sep=';', thousands='.')
         else:
             df = pd.read_csv(file_source, sep=';', thousands='.')
 
-        # Konversi semua kolom kecuali 'Date' menjadi numerik
+        # Konversi kolom angka ke float
         for col in df.columns:
             if col.lower() != 'date':
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+                df[col] = pd.to_numeric(df[col], errors='coerce')  # force convert to numeric
 
-        # Jadikan 'Date' sebagai indeks jika ada
+        # Parsing tanggal jika ada kolom 'Date'
         if 'Date' in df.columns:
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
             df = df.set_index('Date')
