@@ -572,8 +572,8 @@ elif st.session_state['current_page'] == 'ARIMA Model':
 
     if 'train_data_returns' in st.session_state and not st.session_state['train_data_returns'].empty:
         train_data_returns = st.session_state['train_data_returns']
-    st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
-    st.dataframe(train_data_returns.head())
+        st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
+        st.dataframe(train_data_returns.head())
 
     # 1. Tentukan Ordo ARIMA
     st.subheader("1. Tentukan Ordo ARIMA (p, d, q) 🔢")
@@ -659,8 +659,8 @@ elif st.session_state['current_page'] == 'ARIMA Model':
 
         except Exception as e:
             st.error(f"Gagal melatih model ARIMA: {e}")
-else:
-    st.warning("Data pelatihan belum tersedia. Silakan lakukan splitting terlebih dahulu.")
+    else:
+        st.warning("Data pelatihan belum tersedia. Silakan lakukan splitting terlebih dahulu.")
 
 elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
     st.markdown('<div class="main-header">GARCH (Model & Prediksi) 🌪️📈</div>', unsafe_allow_html=True)
