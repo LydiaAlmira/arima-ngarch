@@ -28,17 +28,18 @@ def load_data(file_source=None, default_filename=None):
         else:
             df = pd.read_csv(file_source, sep=';', thousands='.')
 
-        # Konversi kolom angka ke float
+        # Konversi semua kolom kecuali 'Date' ke numerik
         for col in df.columns:
             if col.lower() != 'date':
-                df[col] = pd.to_numeric(df[col], errors='coerce')  # force convert to numeric
+                df[col] = pd.to_numeric(df[col], errors='coerce')
 
-        # Parsing tanggal jika ada kolom 'Date'
+        # Konversi kolom 'Date' ke datetime dan set sebagai index
         if 'Date' in df.columns:
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
             df = df.set_index('Date')
 
         return df
+
     except Exception as e:
         print(f"Gagal membaca data: {e}")
         return pd.DataFrame()
