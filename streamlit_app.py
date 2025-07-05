@@ -568,51 +568,42 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write(f"Pisahkan data menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
+    st.write(f"Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
 
-    if 'processed_returns' in st.session_state and not st.session_state['processed_returns'].empty:
-        data_to_split = st.session_state['processed_returns']
+    if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
+        data_to_split = st.session_state['df_currency_raw']['Value']
         currency_name = st.session_state.get('selected_currency', '')
-        d_value = st.session_state.get('d', 0)
 
-        st.write(f"Data yang telah stasioner dari {currency_name} (differencing ke-{d_value}) yang akan dibagi 📈:")
-
-        if d_value > 1:
-            st.warning(f"Data memerlukan differencing sebanyak {d_value} kali. ⚠️ Ini menunjukkan adanya non-stasioneritas kuat. Pertimbangkan untuk mengevaluasi kembali transformasi data atau model yang digunakan.")
-
+        st.write(f"Data harga nilai tukar {currency_name} yang akan dibagi 📈:")
         st.dataframe(data_to_split.head())
 
         st.subheader("Konfigurasi Pembagian Data ⚙️")
-        test_size_ratio = st.slider("Pilih rasio data pengujian (%):", 10, 50, 20, 5, key="test_size_slider")
-        test_size_frac = test_size_ratio / 100.0
-        st.write(f"Rasio pengujian: {test_size_ratio}% (Data pelatihan: {100 - test_size_ratio}%)")
+        total_length = len(data_to_split)
+        default_train_length = 1304  # contoh fix: 1304
+        train_length = st.number_input("Jumlah data pelatihan (default: 1304):", min_value=1, max_value=total_length-1, value=default_train_length, step=1)
 
         if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
-            train_size = int(len(data_to_split) * (1 - test_size_frac))
-            train_data_returns = data_to_split.iloc[:train_size]
-            test_data_returns = data_to_split.iloc[train_size:]
+            train_data = data_to_split.iloc[:train_length]
+            test_data = data_to_split.iloc[train_length:]
 
-            st.session_state['train_data_returns'] = train_data_returns
-            st.session_state['test_data_returns'] = test_data_returns
-
-            # Simpan harga asli untuk keperluan rekonstruksi prediksi
-            if 'original_prices' in st.session_state:
-                original_prices = st.session_state['original_prices']
-                relevant_index = train_data_returns.index.union(test_data_returns.index)
-                st.session_state['original_prices_for_reconstruction'] = original_prices.loc[original_prices.index.intersection(relevant_index)]
+            st.session_state['train_data_returns'] = train_data
+            st.session_state['test_data_returns'] = test_data
 
             st.success("Data berhasil dibagi! ✅")
-            st.write(f"Ukuran data pelatihan: {len(train_data_returns)} sampel 💪")
-            st.write(f"Ukuran data pengujian: {len(test_data_returns)} sampel 🧪")
+            st.write(f"Jumlah data pelatihan: {len(train_data)}")
+            st.write(f"Jumlah data pengujian: {len(test_data)}")
+            st.write(f"Periode pelatihan: {train_data.index.min().strftime('%d %B %Y')} – {train_data.index.max().strftime('%d %B %Y')}")
+            st.write(f"Periode pengujian: {test_data.index.min().strftime('%d %B %Y')} – {test_data.index.max().strftime('%d %B %Y')}")
 
+            # Visualisasi
             st.subheader(f"Visualisasi Pembagian Data {currency_name} 📈📉")
             fig_split = go.Figure()
-            fig_split.add_trace(go.Scatter(x=train_data_returns.index, y=train_data_returns.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
-            fig_split.add_trace(go.Scatter(x=test_data_returns.index, y=test_data_returns.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
+            fig_split.add_trace(go.Scatter(x=train_data.index, y=train_data.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
+            fig_split.add_trace(go.Scatter(x=test_data.index, y=test_data.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
             fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
             st.plotly_chart(fig_split)
     else:
-        st.warning("Tidak ada data yang tersedia untuk dibagi. Pastikan Anda telah melalui 'Input Data', 'Preprocessing', dan 'Stasioneritas Data'. ⚠️⬆️")
+        st.warning("Tidak ada data harga tersedia untuk dibagi. Pastikan Anda telah mengunggah data pada menu 'Input Data'. ⚠️")
 
 elif st.session_state['current_page'] == 'ARIMA Model':
     st.markdown('<div class="main-header">MODEL ARIMA 📈</div>', unsafe_allow_html=True)
