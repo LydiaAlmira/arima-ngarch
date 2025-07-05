@@ -15,6 +15,29 @@ from scipy import stats # Untuk Jarque-Bera test
 from statsmodels.tsa.arima.model import ARIMA
 from arch import arch_model
 
+
+def load_data(file_source=None, default_filename=None):
+    try:
+        if file_source == 'default':
+            df = pd.read_csv(default_filename, sep=';', thousands='.')
+        else:
+            df = pd.read_csv(file_source, sep=';', thousands='.')
+
+        # Konversi semua kolom kecuali 'Date' menjadi numerik
+        for col in df.columns:
+            if col.lower() != 'date':
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        # Jadikan 'Date' sebagai indeks jika ada
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+            df = df.set_index('Date')
+
+        return df
+    except Exception as e:
+        print(f"Gagal membaca data: {e}")
+        return pd.DataFrame()
+        
 # --- Konfigurasi Halaman (Hanya dipanggil sekali di awal) ---
 st.set_page_config(
     page_title='Prediksi ARIMA-NGARCH Volatilitas Mata Uang 📈💰',
