@@ -24,16 +24,16 @@ def load_data(file_source=None, default_filename=None):
 
     try:
         if file_source == 'default':
-            df = pd.read_csv(default_filename, sep=';', thousands='.')
+            df = pd.read_csv(default_filename, sep=';', decimal='.')
         else:
-            df = pd.read_csv(file_source, sep=';', thousands='.')
+            df = pd.read_csv(file_source, sep=';', decimal='.')
 
-        # Konversi semua kolom kecuali 'Date' ke numerik
+        # Konversi kolom angka ke numerik
         for col in df.columns:
-            if col.lower() != 'date':
+            if col != 'Date':
                 df[col] = pd.to_numeric(df[col], errors='coerce')
 
-        # Konversi kolom 'Date' ke datetime dan set sebagai index
+        # Set kolom 'Date' sebagai index kalau ada
         if 'Date' in df.columns:
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
             df = df.set_index('Date')
