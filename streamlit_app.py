@@ -295,74 +295,135 @@ elif st.session_state['current_page'] == 'input_data':
 
     if uploaded_file_input_data_page is not None:
         df_general = load_data(file_source=uploaded_file_input_data_page)
-    elif 'df_currency_raw_multi' not in st.session_state or st.session_state['df_currency_raw_multi'].empty:
-        st.info("Tidak ada file yang diunggah. Anda bisa mengunggah file Anda sendiri, atau kami akan mencoba memuat data contoh jika tersedia di repositori. ℹ️")
-        if st.checkbox("Muat data contoh/default dari repositori? (Jika tersedia) ⚙️", key="load_default_checkbox"):
-            df_general = load_data(file_source='default', default_filename='data/default_currency_multi.csv')
-            st.write("🧪 Cek isi DataFrame:")
-            st.dataframe(df_general.head())
-            st.write("📋 Tipe DataFrame:")
-            st.write(df_general.dtypes)
+        st.write("Cek Kolom Numerik yang Terdeteksi:")
+        for col in df_general.columns:
+        st.write(f"{col}: {pd.api.types.is_numeric_dtype(df_general[col])}")
 
+elif st.session_state['current_page'] == 'input_data':
+    st.markdown('<div class="main-header">Input Data 📥</div>', unsafe_allow_html=True)
+    st.write("Unggah data time series nilai tukar mata uang. File CSV harus memiliki kolom 'Date' dan satu atau lebih kolom mata uang. 🗂️")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.session_state['variable_name'] = st.text_input("Nama Variabel:", value=st.session_state['variable_name'], key="variable_name_input")
+
+    df_general = pd.DataFrame()
+    uploaded_file = st.file_uploader("Pilih file CSV nilai tukar Anda ⬆️", type="csv", key="input_data_uploader")
+
+    if uploaded_file is not None:
+        # Fungsi pembacaan dan pembersihan data
+        def load_data(file):
+            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')  # jika format lokal Eropa
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                df = df.set_index('Date')
+
+            # Paksa semua kolom selain 'Date' ke numerik
+            for col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+            return df
+
+        df_general = load_data(uploaded_file)
+
+        st.write("🧪 Cek preview data:")
+        st.dataframe(df_general.head())
+
+        st.write("📋 Tipe data masing-masing kolom:")
+        st.write(df_general.dtypes)
+
+        st.write("🔍 Deteksi kolom numerik:")
+        for col in df_general.columns:
+            is_numeric = pd.api.types.is_numeric_dtype(df_general[col])
+            st.write(f"{col}: {'✅' if is_numeric else '❌'}")
+
+    elif 'df_currency_raw_multi' not in st.session_state or st.session_state['df_currency_raw_multi'].empty:
+        st.info("Tidak ada file diunggah. Anda dapat mengunggah file sendiri, atau coba muat data contoh.")
+        if st.checkbox("Muat data contoh dari repositori 📂", key="load_default_checkbox"):
+            try:
+                df_general = pd.read_csv('data/default_currency_multi.csv', sep=';', thousands='.')
+                if 'Date' in df_general.columns:
+                    df_general['Date'] = pd.to_datetime(df_general['Date'], errors='coerce')
+                    df_general = df_general.set_index('Date')
+
+                for col in df_general.columns:
+                    df_general[col] = pd.to_numeric(df_general[col], errors='coerce')
+
+                st.success("Data contoh berhasil dimuat.")
+                st.dataframe(df_general.head())
+            except Exception as e:
+                st.error(f"Gagal memuat data contoh: {e}")
+                st.stop()
         else:
-            st.info("Silakan unggah file CSV Anda untuk memulai. 👆")
+            st.warning("Silakan unggah file CSV Anda untuk memulai.")
             st.session_state['df_currency_raw_multi'] = pd.DataFrame()
             st.session_state['df_currency_raw'] = pd.DataFrame()
             st.stop()
     else:
-        st.write("Data nilai tukar yang sudah dimuat sebelumnya: ✅")
+        st.write("✅ Menggunakan data nilai tukar yang dimuat sebelumnya.")
         df_general = st.session_state['df_currency_raw_multi']
 
     if not df_general.empty:
         st.session_state['df_currency_raw_multi'] = df_general
 
+        # Filter kolom numerik
         available_cols = [col for col in df_general.columns if pd.api.types.is_numeric_dtype(df_general[col])]
+
         if available_cols:
             current_idx = 0
             if st.session_state['selected_currency'] in available_cols:
                 current_idx = available_cols.index(st.session_state['selected_currency'])
-            st.session_state['selected_currency'] = st.selectbox("Pilih mata uang yang akan dianalisis: 🎯", available_cols, index=current_idx, key="currency_selector")
-            
+
+            st.session_state['selected_currency'] = st.selectbox("Pilih mata uang untuk analisis: 🎯", available_cols, index=current_idx, key="currency_selector")
+
             if st.session_state['selected_currency']:
                 st.session_state['df_currency_raw'] = df_general[[st.session_state['selected_currency']]].rename(columns={st.session_state['selected_currency']: 'Value'})
-                st.info(f"Mata uang '{st.session_state['selected_currency']}' telah dipilih untuk analisis. 🔍")
+                st.info(f"Mata uang '{st.session_state['selected_currency']}' telah dipilih. 🏷️")
+
                 if st.session_state['variable_name'] == "Nama Variabel":
                     st.session_state['variable_name'] = st.session_state['selected_currency']
 
                 with col2:
-                    st.text_input("Jumlah Data yang Digunakan:", value=str(len(st.session_state['df_currency_raw'])), disabled=True)
+                    st.text_input("Jumlah Data:", value=str(len(st.session_state['df_currency_raw'])), disabled=True)
                     if isinstance(st.session_state['df_currency_raw'].index, pd.DatetimeIndex):
                         start_date = st.session_state['df_currency_raw'].index.min().strftime('%Y-%m-%d')
                         end_date = st.session_state['df_currency_raw'].index.max().strftime('%Y-%m-%d')
-                        st.text_input("Tanggal Awal Data:", value=start_date, disabled=True)
-                        st.text_input("Tanggal Akhir Data:", value=end_date, disabled=True)
+                        st.text_input("Tanggal Awal:", value=start_date, disabled=True)
+                        st.text_input("Tanggal Akhir:", value=end_date, disabled=True)
                     else:
-                        st.text_input("Tanggal Awal Data:", value="N/A (Bukan tanggal)", disabled=True)
-                        st.text_input("Tanggal Akhir Data:", value="N/A (Bukan tanggal)", disabled=True)
-            else:
-                st.warning("Tidak ada mata uang yang dipilih. Silakan pilih salah satu untuk melanjutkan. 🚫")
-                st.session_state['df_currency_raw'] = pd.DataFrame()
+                        st.text_input("Tanggal Awal:", value="N/A (bukan indeks waktu)", disabled=True)
+                        st.text_input("Tanggal Akhir:", value="N/A (bukan indeks waktu)", disabled=True)
+
         else:
-            st.warning("Tidak ada kolom numerik yang terdeteksi dalam file Anda. Pastikan data nilai tukar adalah angka. ⚠️")
+            st.warning("🚫 Tidak ada kolom numerik terdeteksi. Pastikan data nilai tukar bertipe angka.")
             st.session_state['df_currency_raw'] = pd.DataFrame()
     else:
-        st.warning("Tidak ada data yang berhasil dimuat. Unggah file yang valid atau coba muat data contoh jika tersedia. 🚫")
+        st.warning("🚫 Tidak ada data yang berhasil dimuat.")
         st.session_state['df_currency_raw_multi'] = pd.DataFrame()
         st.session_state['df_currency_raw'] = pd.DataFrame()
+
         with col2:
-            st.text_input("Jumlah Data yang Digunakan:", value="0", disabled=True)
-            st.text_input("Tanggal Awal Data:", value="N/A", disabled=True)
-            st.text_input("Tanggal Akhir Data:", value="N/A", disabled=True)
+            st.text_input("Jumlah Data:", value="0", disabled=True)
+            st.text_input("Tanggal Awal:", value="N/A", disabled=True)
+            st.text_input("Tanggal Akhir:", value="N/A", disabled=True)
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
-        st.subheader(f"Tampilan Data Terpilih: {st.session_state['selected_currency']} 📊")
+        st.subheader(f"📊 Data Terpilih: {st.session_state['selected_currency']}")
         st.dataframe(st.session_state['df_currency_raw'])
-        
-        st.subheader(f"Visualisasi Data Nilai Tukar Mentah: {st.session_state['selected_currency']} 📈")
+
+        st.subheader(f"📈 Grafik Nilai Tukar: {st.session_state['selected_currency']}")
         fig_raw = go.Figure()
-        fig_raw.add_trace(go.Scatter(x=st.session_state['df_currency_raw'].index, y=st.session_state['df_currency_raw']['Value'], mode='lines', name='Nilai Tukar', line=dict(color='#5d8aa8')))
-        fig_raw.update_layout(title_text=f'Grafik Nilai Tukar Mentah {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
+        fig_raw.add_trace(go.Scatter(
+            x=st.session_state['df_currency_raw'].index,
+            y=st.session_state['df_currency_raw']['Value'],
+            mode='lines',
+            name='Nilai Tukar',
+            line=dict(color='#5d8aa8')
+        ))
+        fig_raw.update_layout(title=f'Grafik Nilai Tukar {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
         st.plotly_chart(fig_raw)
+
 
 
 elif st.session_state['current_page'] == 'data_preprocessing':
