@@ -640,8 +640,8 @@ else:
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
-    else:
-        st.info("Data belum stasioner. Silakan jalankan uji ADF terlebih dahulu. ⚠️")
+        else:
+            st.info("Data belum stasioner. Silakan jalankan uji ADF terlebih dahulu. ⚠️")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
