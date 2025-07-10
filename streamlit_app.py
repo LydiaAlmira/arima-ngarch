@@ -475,7 +475,13 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             if apply_log_return:
                 log_return_series = np.log(series_data).diff().dropna()
 
-                st.session_state['log_return_series'] = log_return_series
+            # Simpan versi yang akan digunakan di stasioneritas (boleh dimodifikasi)
+            st.session_state['log_return_series'] = log_return_series
+
+            # Simpan versi original khusus untuk splitting agar tidak terpengaruh differencing
+            if 'log_return_original' not in st.session_state:
+                st.session_state['log_return_original'] = log_return_series.copy()
+
                 st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
                 st.write("Pratinjau log-return:")
                 st.line_chart(log_return_series)
@@ -501,7 +507,7 @@ elif st.session_state['current_page'] == 'data_splitting':
     st.write(f"Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
-        log_return_series = st.session_state.get('log_return_series', None)
+        log_return_series = st.session_state.get('log_return_original', None)
         currency_name = st.session_state.get('selected_currency', '')
 
         if log_return_series is not None:
