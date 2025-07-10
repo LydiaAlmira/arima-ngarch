@@ -604,8 +604,6 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     st.error(f"Kesalahan saat membuat plot ACF/PACF: {e}")
         else:
             st.warning("❗ Data belum dipastikan stasioner. Jalankan ADF test terlebih dahulu.")
-    else:
-        st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
