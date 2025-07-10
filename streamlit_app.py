@@ -572,17 +572,18 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     if currency in adf_results:
         adf_stat = adf_results[currency]["adf_stat"]
         p_value = adf_results[currency]["p_value"]
-
-        st.write(f"**Mata Uang:** {currency}")
+    
+        # tampilkan hasil
         st.write(f"**ADF Statistic:** {adf_stat:.6f}")
         st.write(f"**p-value:** {p_value:.6f}")
-
+    
         if p_value < 0.05:
             st.success("✅ Data log-return bersifat **stasioner** (tolak H0).")
         else:
             st.warning("⚠️ Data log-return **tidak stasioner** (gagal tolak H0).")
     else:
-        st.warning(f"⚠️ Tidak ditemukan hasil ADF untuk {currency} dalam file pkl.")
+        st.error(f"❌ Key '{currency}' tidak ditemukan dalam file ADF.")
+        st.stop()
 
     # Jika stasioner, tampilkan ACF/PACF
     if currency in adf_results and adf_results[currency]["p_value"] < 0.05:
