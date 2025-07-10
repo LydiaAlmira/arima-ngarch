@@ -444,19 +444,24 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                 key="selected_column"
             )
             series_data = df_raw[selected_column]
-
-            #Opsi Transformasi ke Log-Return
+            # Opsi Transformasi ke Log-Return
             st.markdown("##### Transformasi: Log-Return 📉")
             apply_log_return = st.checkbox("Hitung log-return dari data nilai tukar ini")
 
             log_return_series = None
             if apply_log_return:
                 try:
+                    # 💡 Cek dan sesuaikan skala dulu
+                    if series_data.max() > 100000:
+                        series_data = series_data / 1000
+                        st.info("Skala data dibagi 1000 agar log-return lebih presisi. 📉")
+
+                    # Hitung log-return
                     log_return_series = np.log(series_data).diff().dropna()
                     st.session_state['log_return_series'] = log_return_series
 
                     if 'log_return_original' not in st.session_state:
-                        st.session_state['log_return_original'] = log_return_series.copy()
+                    st.session_state['log_return_original'] = log_return_series.copy()
 
                     st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
                     st.write("📉 Grafik Log-Return:")
@@ -465,11 +470,10 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                     # Gabungkan dengan data aslinya (jika ingin preview berdampingan)
                     log_return_df = pd.concat([series_data, log_return_series], axis=1)
                     log_return_df.columns = ['Value', 'Log-Return']
-
                     st.write("🧾 Tabel Data dan Log-Return (5 data pertama):")
                     st.dataframe(log_return_df.dropna().head())
 
-                    # Simpan ke session untuk digunakan di halaman lain
+                    # Simpan ke session
                     st.session_state['log_return_df'] = log_return_df
 
                 except Exception as e:
