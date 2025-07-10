@@ -576,71 +576,63 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
-    st.write(f"Pengujian stasioneritas pada data log-return {st.session_state.get('selected_currency', '')} menggunakan Uji ADF (Augmented Dickey-Fuller).")
+    st.write(f"Untuk pemodelan time series, kita harus memastikan bahwa data log-return untuk {st.session_state.get('selected_currency', '')} sudah stasioner. 🔍")
 
     if 'log_return_series' in st.session_state and st.session_state['log_return_series'] is not None:
         log_return = st.session_state['log_return_series']
-        st.write("📄 5 baris pertama log-return:")
+        st.write("📋 5 Baris Pertama Data Log-Return:")
         st.dataframe(log_return.head())
 
-        st.subheader("Hasil Uji ADF 🤖")
+        st.subheader("Uji Stasioneritas ADF pada Log-Return")
 
-        if st.button("Jalankan Uji ADF pada Log-Return"):
+        if st.button("Jalankan Uji ADF ▶️", key="run_adf_test"):
             try:
                 result = adfuller(log_return.dropna())
-                adf_stat = result[0]
-                p_value = result[1]
+                stat = result[0]
+                pval = result[1]
+
+                st.write(f"**ADF Statistic:** {stat:.6f}")
+                st.write(f"**p-value:** {pval:.6f}")
+
+                if pval < 0.05:
+                    st.success("Data log-return stasioner (tolak H0). ✅")
+                else:
+                    st.warning("Data log-return tidak stasioner (gagal tolak H0). ⚠️")
 
                 st.session_state['adf_result'] = result
-                st.session_state['adf_pvalue'] = p_value
-                st.session_state['is_stationary_adf'] = p_value < 0.05
-                st.session_state['final_series'] = log_return
+                st.session_state['adf_pvalue'] = pval
+                st.session_state['final_series'] = log_return  # log-return tetap dipakai
                 st.session_state['processed_returns'] = log_return
 
-                # Tampilkan hasil seperti di Colab
-                st.markdown(f"### ✅ ADF Test untuk {st.session_state.get('selected_currency', '')} (Log-Return Train)")
-                st.write(f"**ADF Statistic** : `{adf_stat:.6f}`")
-                st.write(f"**p-value**       : `{p_value:.6f}`")
-
-                if p_value < 0.05:
-                    st.success("Data stasioner (tolak H0) ✅")
-                else:
-                    st.warning("Data tidak stasioner (gagal tolak H0) ⚠️")
-
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat menjalankan ADF test: {e}")
+                st.error(f"Gagal menjalankan uji ADF: {e}")
+
+        # Tampilkan Plot ACF & PACF jika stasioner
+        if st.session_state.get('adf_pvalue', 1.0) <= 0.05:
+            st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
+            st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
+
+            lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
+
+            if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
+                try:
+                    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+                    plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
+                    axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                    plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
+                    axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                    fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return", fontsize=14)
+                    plt.tight_layout()
+                    st.pyplot(fig)
+
+                    st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
+                except Exception as e:
+                    st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
     else:
         st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
-
-    # Tampilkan Plot ACF & PACF jika data sudah stasioner
-    if st.session_state.get('is_stationary_adf', False):
-        st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
-        st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
-
-        # Slider untuk menentukan jumlah lag
-        lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
-
-        # Tombol untuk menampilkan plot
-        if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
-            try:
-                fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-                plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
-                axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
-                axes[0].grid(True)
-
-                plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
-                axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
-                axes[1].grid(True)
-
-                fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return (Train)", fontsize=14)
-                plt.tight_layout()
-                st.pyplot(fig)
-
-                st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
