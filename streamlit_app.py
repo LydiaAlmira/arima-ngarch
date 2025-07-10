@@ -535,80 +535,72 @@ elif st.session_state['current_page'] == 'data_splitting':
 
 
 elif st.session_state['current_page'] == 'stasioneritas_data':
-    import os
     import pickle
-    import matplotlib.pyplot as plt
     from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+    import matplotlib.pyplot as plt
 
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
-    st.write("Untuk pemodelan time series, kita perlu memastikan bahwa data **log-return** bersifat stasioner.")
+    st.write("Halaman ini menampilkan hasil uji stasioneritas (ADF Test) dan plot ACF/PACF untuk data log-return hasil pembagian data train.")
 
-    # Ambil log-return train dari session
-    log_return_train = st.session_state.get('train_data_returns', None)
-    currency = st.session_state.get('selected_currency', '')
+    currencies = ['IDR', 'MYR', 'SGD']
+    adf_results_path = "models/adf_test_results_clean.pkl"
 
-    if log_return_train is None or log_return_train.empty:
-        st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan preprocessing dan pembagian data terlebih dahulu.")
-        st.stop()
-
-    st.subheader(f"📈 Data Log-Return (Train) - {currency}")
-    st.dataframe(log_return_train.head())
-
-    # Load hasil ADF test dari file pkl di folder models
-    adf_pkl_path = os.path.join("models", "adf_test_results.pkl")
+    # Load hasil ADF
     try:
-        with open(adf_pkl_path, "rb") as f:
+        with open(adf_results_path, "rb") as f:
             adf_results = pickle.load(f)
-            st.session_state['adf_results_from_pkl'] = adf_results
-    except FileNotFoundError:
-        st.error("❌ File `models/adf_test_results.pkl` tidak ditemukan.")
-        st.stop()
+        st.success("✅ Hasil ADF Test berhasil dimuat dari file.")
     except Exception as e:
-        st.error(f"❌ Gagal membuka file pkl: {e}")
+        st.error(f"Gagal memuat hasil ADF dari file `{adf_results_path}`: {e}")
         st.stop()
 
     # Tampilkan hasil ADF
-    st.subheader("🔍 Hasil Uji Stasioneritas (ADF Test) dari Colab")
-    if currency in adf_results:
-        adf_stat = adf_results[currency]["adf_stat"]
-        p_value = adf_results[currency]["p_value"]
-    
-        # tampilkan hasil
-        st.write(f"**ADF Statistic:** {adf_stat:.6f}")
-        st.write(f"**p-value:** {p_value:.6f}")
-    
-        if p_value < 0.05:
-            st.success("✅ Data log-return bersifat **stasioner** (tolak H0).")
+    st.subheader("📋 Hasil Uji ADF")
+    for currency in currencies:
+        if currency in adf_results:
+            adf_stat = adf_results[currency]["adf_stat"]
+            p_value = adf_results[currency]["p_value"]
+
+            st.markdown(f"**{currency}**")
+            st.write(f"• Statistik ADF: `{adf_stat:.6f}`")
+            st.write(f"• P-value: `{p_value:.6f}`")
+            if p_value < 0.05:
+                st.success("➡️ Data stasioner (tolak H₀)")
+            else:
+                st.warning("➡️ Data tidak stasioner (gagal tolak H₀)")
         else:
-            st.warning("⚠️ Data log-return **tidak stasioner** (gagal tolak H0).")
-    else:
-        st.error(f"❌ Key '{currency}' tidak ditemukan dalam file ADF.")
-        st.stop()
+            st.warning(f"Tidak ada hasil ADF untuk {currency}.")
 
-    # Jika stasioner, tampilkan ACF/PACF
-    if currency in adf_results and adf_results[currency]["p_value"] < 0.05:
-        st.subheader("📉 Plot ACF & PACF (Train)")
-        st.info("ACF menunjukkan korelasi antar lag. PACF menunjukkan korelasi parsial antar lag setelah efek lag sebelumnya dikendalikan.")
+    # Plot ACF & PACF jika data log-return train tersedia
+    st.subheader("📈 Plot ACF & PACF (Log-Return Train)")
 
-        lags = st.slider("Jumlah Lags:", min_value=5, max_value=50, value=20, key="acf_pacf_lags")
+    log_return_train = st.session_state.get('train_data_returns', None)
+    selected_currency = st.session_state.get('selected_currency', '')
 
-        if st.button("Tampilkan Plot ACF & PACF 📊", key="plot_acf_pacf_train"):
+    if log_return_train is not None and not log_return_train.empty:
+        st.write(f"Plot berikut berdasarkan data log-return train untuk: **{selected_currency}**")
+        lags = st.slider("Jumlah lags untuk plot:", 5, 50, 20, key="acf_pacf_lags_slider")
+
+        if st.button("Tampilkan Plot ACF & PACF"):
             try:
                 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
                 plot_acf(log_return_train, lags=lags, alpha=0.05, ax=axes[0])
-                axes[0].set_title(f"ACF {currency} Log-Return (Train)")
+                axes[0].set_title(f"ACF {selected_currency} Log-Return (Train)")
 
                 plot_pacf(log_return_train, lags=lags, alpha=0.05, ax=axes[1])
-                axes[1].set_title(f"PACF {currency} Log-Return (Train)")
+                axes[1].set_title(f"PACF {selected_currency} Log-Return (Train)")
 
-                fig.suptitle(f"ACF & PACF - {currency} Log-Return (Train)", fontsize=14)
+                fig.suptitle(f"ACF & PACF - {selected_currency} Log-Return (Train)", fontsize=14)
                 plt.tight_layout()
                 st.pyplot(fig)
 
-                st.success("Plot ACF & PACF berhasil ditampilkan. 🎯")
+                st.success("✅ Plot ACF & PACF berhasil ditampilkan.")
             except Exception as e:
-                st.error(f"❌ Kesalahan saat membuat plot ACF/PACF: {e}")
+                st.error(f"Gagal membuat plot ACF/PACF: {e}")
+    else:
+        st.warning("📛 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
+
 
 elif st.session_state['current_page'] == 'ARIMA Model':
     st.markdown('<div class="main-header">MODEL ARIMA 📈</div>', unsafe_allow_html=True)
