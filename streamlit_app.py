@@ -416,7 +416,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
         st.subheader("Pilih Kolom Data dan Transformasi 🔄")
 
-        # 🟦 Dropdown untuk memilih kolom numerik
+        #Dropdown untuk memilih kolom numerik
         numeric_cols = [col for col in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[col])]
         
         if numeric_cols:
@@ -430,9 +430,11 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             st.markdown("##### Penanganan Missing Values 🚫❓")
             if series_data.isnull().any():
                 st.warning(f"Terdapat nilai hilang ({series_data.isnull().sum()} nilai). ⚠️ Mohon tangani:")
-                missing_strategy = st.selectbox("Pilih strategi penanganan missing values:",
-                                            ["Drop NA", "Isi dengan Mean", "Isi dengan Median", "Isi dengan Nilai Sebelumnya (FFill)", "Isi dengan Nilai Berikutnya (BFill)"],
-                                            key="missing_strategy")
+                missing_strategy = st.selectbox(
+                    "Pilih strategi penanganan missing values:",
+                    ["Drop NA", "Isi dengan Mean", "Isi dengan Median", "Isi dengan Nilai Sebelumnya (FFill)", "Isi dengan Nilai Berikutnya (BFill)"],
+                    key="missing_strategy"
+                )
                 if missing_strategy == "Drop NA":
                     series_data = series_data.dropna()
                     st.info("Nilai hilang dihapus. ✅")
@@ -449,42 +451,45 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                     series_data = series_data.fillna(method='bfill')
                     st.info("Nilai hilang diisi dengan nilai berikutnya (backward fill). ✅")
             else:
-                st.info("Tidak ada nilai hilang terdeteksi. 👍 Dataset Anda bersih!")
+                st.info("Tidak ada nilai hilang terdeteksi.")
 
             st.markdown("##### Penanganan Nilai Nol atau Negatif 🚨")
-            zero_or_negative_values = series_data[series_data <= 0]
-            if not zero_or_negative_values.empty:
-                st.warning(f"Terdapat {len(zero_or_negative_values)} nilai nol atau negatif dalam data Anda. Ini akan menyebabkan masalah saat menghitung return logaritmik atau persentase. ❗")
-                clean_strategy = st.selectbox("Pilih strategi penanganan nilai nol/negatif:",
-                                          ["Hapus baris tersebut", "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)"],
-                                          key="clean_strategy")
+            zero_or_negative = (series_data <= 0).sum()
+            if zero_or_negative > 0:
+                st.warning(f"Terdapat {zero_or_negative} nilai nol atau negatif. ❗")
+                clean_strategy = st.selectbox(
+                    "Pilih strategi penanganan nilai nol/negatif:",
+                    ["Hapus baris tersebut", "Ganti dengan nilai sangat kecil positif (1e-6)"],
+                    key="clean_strategy"
+                )
                 if clean_strategy == "Hapus baris tersebut":
                     series_data = series_data[series_data > 0]
                     st.info("Baris dengan nilai nol atau negatif telah dihapus. ✅")
                 elif clean_strategy == "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)":
-                    series_data = series_data.replace(0, 1e-6)
-                    series_data = series_data.apply(lambda x: 1e-6 if x < 1e-6 else x)
-                    st.info("Nilai nol atau negatif telah diganti dengan 1e-6. ✅")
+                    series_data = series_data.apply(lambda x: max(x, 1e-6))
+                    st.info("Nilai nol atau negatif diganti dengan 1e-6. ✅")
             else:
-                st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
+                st.info("Tidak ada nilai nol atau negatif terdeteksi.")
 
-            #Opsi Transformasi ke Log-Return 📈
+            #Opsi Transformasi ke Log-Return
             st.markdown("##### Transformasi: Log-Return 📉")
             apply_log_return = st.checkbox("Hitung log-return dari data nilai tukar ini")
 
+            log_return_series = None
             if apply_log_return:
-                log_return_series = np.log(series_data).diff().dropna()
+                try:
+                    log_return_series = np.log(series_data).diff().dropna()
+                    st.session_state['log_return_series'] = log_return_series
 
-            # Simpan versi yang akan digunakan di stasioneritas (boleh dimodifikasi)
-            st.session_state['log_return_series'] = log_return_series
+                    if 'log_return_original' not in st.session_state:
+                        st.session_state['log_return_original'] = log_return_series.copy()
 
-            # Simpan versi original khusus untuk splitting agar tidak terpengaruh differencing
-            if 'log_return_original' not in st.session_state:
-                st.session_state['log_return_original'] = log_return_series.copy()
-
-                st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
-                st.write("Pratinjau log-return:")
-                st.line_chart(log_return_series)
+                    st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
+                    st.write("Pratinjau log-return:")
+                    st.line_chart(log_return_series)
+                except Exception as e:
+                    st.error(f"Gagal menghitung log-return: {e}")
+                    st.session_state['log_return_series'] = None
             else:
                 st.session_state['log_return_series'] = None  # reset kalau tidak dicentang
 
@@ -496,7 +501,6 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
             st.write("Pratinjau data hasil preprocessing:")
             st.line_chart(series_data)
-        
         else:
             st.warning("Tidak ditemukan kolom numerik untuk diproses. Pastikan file yang diunggah sesuai format.")
     else:
@@ -545,6 +549,9 @@ elif st.session_state['current_page'] == 'data_splitting':
 
 
 elif st.session_state['current_page'] == 'stasioneritas_data':
+    from statsmodels.tsa.stattools import adfuller
+    from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
 
@@ -553,95 +560,92 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         st.write(f"5 baris pertama data nilai tukar {st.session_state.get('selected_currency', '')} yang akan diuji:")
         st.dataframe(series_to_test.head())
 
-from statsmodels.tsa.stattools import adfuller
+        st.subheader("Uji Stasioneritas dengan Augmented Dickey-Fuller (ADF) 🤔")
 
-st.subheader("Uji Stasioneritas dengan Augmented Dickey-Fuller (ADF) 🤔")
+        log_return = st.session_state.get('log_return_series', None)
 
-# Ambil data log-return dari hasil preprocessing
-log_return = st.session_state.get('log_return_series', None)
+        if log_return is not None:
+            st.write("Log-return tersedia. Siap untuk diuji stasioneritas.")
 
-if log_return is not None:
-    st.write("Log-return tersedia. Siap untuk diuji stasioneritas.")
+            if st.button("Jalankan Uji ADF pada Log-Return ▶️", key="run_adf_test"):
+                try:
+                    result_adf = adfuller(log_return)
+                    st.session_state['adf_result'] = result_adf
+                    st.session_state['adf_pvalue'] = result_adf[1]
 
-    if st.button("Jalankan Uji ADF pada Log-Return ▶️", key="run_adf_test"):
-        try:
-            result_adf = adfuller(log_return)
-            st.session_state['adf_result'] = result_adf
-            st.session_state['adf_pvalue'] = result_adf[1]
+                    st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
+                    st.write(f"**P-value:** {result_adf[1]:.4f}")
+                    st.write(f"**Jumlah Lags Optimal:** {result_adf[2]}")
+                    st.write("**Nilai Kritis:**")
+                    for key, value in result_adf[4].items():
+                        st.write(f"  {key}: {value:.4f}")
 
-            st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
-            st.write(f"**P-value:** {result_adf[1]:.4f}")
-            st.write(f"**Jumlah Lags Optimal:** {result_adf[2]}")
-            st.write("**Nilai Kritis:**")
-            for key, value in result_adf[4].items():
-                st.write(f"  {key}: {value:.4f}")
+                    if result_adf[1] <= 0.05:
+                        st.success("Log-return **stasioner** (tolak H0). ✅")
+                        st.session_state['is_stationary_adf'] = True
+                        st.session_state['final_series'] = log_return
+                        st.session_state['processed_returns'] = log_return
+                    else:
+                        st.warning("Log-return **tidak stasioner** (gagal tolak H0). ⚠️")
+                        st.info("Akan dilakukan differencing otomatis untuk mencapai stasioneritas. 🔄")
 
-            if result_adf[1] <= 0.05:
-                st.success("Log-return **stasioner** (tolak H0). ✅")
-                st.session_state['is_stationary_adf'] = True
-                st.session_state['final_series'] = log_return
-                st.session_state['processed_returns'] = log_return
-            else:
-                st.warning("Log-return **tidak stasioner** (gagal tolak H0). ⚠️")
-                st.info("Akan dilakukan differencing otomatis untuk mencapai stasioneritas. 🔄")
+                        # Lakukan 1x differencing
+                        differenced = log_return.diff().dropna()
+                        result_adf_diff = adfuller(differenced)
+                        st.session_state['differenced_data'] = differenced
+                        st.session_state['adf_diff_pvalue'] = result_adf_diff[1]
 
-                # Lakukan 1x differencing
-                differenced = log_return.diff().dropna()
-                result_adf_diff = adfuller(differenced)
-                st.session_state['differenced_data'] = differenced
+                        st.write("Hasil setelah differencing:")
+                        st.dataframe(differenced.head())
 
-                st.write("Hasil setelah differencing:")
-                st.dataframe(differenced.head())
+                        st.subheader("Uji ADF setelah Differencing")
+                        st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
+                        st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
+                        st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
+                        st.write("**Nilai Kritis:**")
+                        for key, value in result_adf_diff[4].items():
+                            st.write(f"  {key}: {value:.4f}")
 
-                st.subheader("Uji ADF setelah Differencing")
-                st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
-                st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
-                st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
-                st.write("**Nilai Kritis:**")
-                for key, value in result_adf_diff[4].items():
-                    st.write(f"  {key}: {value:.4f}")
+                        if result_adf_diff[1] <= 0.05:
+                            st.success("Setelah differencing, data **stasioner**. ✅")
+                            st.session_state['is_stationary_adf'] = True
+                            st.session_state['final_series'] = differenced
+                            st.session_state['processed_returns'] = differenced
+                        else:
+                            st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
+                            st.session_state['is_stationary_adf'] = False
 
-                if result_adf_diff[1] <= 0.05:
-                    st.success("Setelah differencing, data **stasioner**. ✅")
-                    st.session_state['is_stationary_adf'] = True
-                    st.session_state['final_series'] = differenced
-                    st.session_state['processed_returns'] = differenced
-                else:
-                    st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
-                    st.session_state['is_stationary_adf'] = False
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
-
-    else:
-        st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
-
-
-    # Plot ACF & PACF hanya jika data sudah stasioner
-    if st.session_state.get('adf_pvalue', 1.0) <= 0.05 or st.session_state.get('adf_diff_pvalue', 1.0) <= 0.05:
-        st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
-        st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
-
-        lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
-       
-        if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
-            try:
-                fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-                plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
-                axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
-
-                plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
-                axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
-
-                fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return (Train)", fontsize=14)
-                plt.tight_layout()
-                st.pyplot(fig)
-
-                st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
+                except Exception as e:
+                    st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
         else:
-            st.info("Data belum stasioner. Silakan jalankan uji ADF terlebih dahulu. ⚠️")
+            st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
+
+        # Tampilkan Plot ACF & PACF jika data sudah stasioner
+        if st.session_state.get('adf_pvalue', 1.0) <= 0.05 or st.session_state.get('adf_diff_pvalue', 1.0) <= 0.05:
+            st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
+            st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
+
+            lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
+
+            if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
+                try:
+                    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+                    plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
+                    axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                    plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
+                    axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                    fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return (Train)", fontsize=14)
+                    plt.tight_layout()
+                    st.pyplot(fig)
+
+                    st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
+                except Exception as e:
+                    st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
+    else:
+        st.warning("Silakan unggah dan proses data terlebih dahulu. 📂")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
