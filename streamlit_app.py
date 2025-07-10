@@ -445,50 +445,6 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             )
             series_data = df_raw[selected_column]
 
-            st.markdown("##### Penanganan Missing Values 🚫❓")
-            if series_data.isnull().any():
-                st.warning(f"Terdapat nilai hilang ({series_data.isnull().sum()} nilai). ⚠️ Mohon tangani:")
-                missing_strategy = st.selectbox(
-                    "Pilih strategi penanganan missing values:",
-                    ["Drop NA", "Isi dengan Mean", "Isi dengan Median", "Isi dengan Nilai Sebelumnya (FFill)", "Isi dengan Nilai Berikutnya (BFill)"],
-                    key="missing_strategy"
-                )
-                if missing_strategy == "Drop NA":
-                    series_data = series_data.dropna()
-                    st.info("Nilai hilang dihapus. ✅")
-                elif missing_strategy == "Isi dengan Mean":
-                    series_data = series_data.fillna(series_data.mean())
-                    st.info("Nilai hilang diisi dengan mean. ✅")
-                elif missing_strategy == "Isi dengan Median":
-                    series_data = series_data.fillna(series_data.median())
-                    st.info("Nilai hilang diisi dengan median. ✅")
-                elif missing_strategy == "Isi dengan Nilai Sebelumnya (FFill)":
-                    series_data = series_data.fillna(method='ffill')
-                    st.info("Nilai hilang diisi dengan nilai sebelumnya (forward fill). ✅")
-                elif missing_strategy == "Isi dengan Nilai Berikutnya (BFill)":
-                    series_data = series_data.fillna(method='bfill')
-                    st.info("Nilai hilang diisi dengan nilai berikutnya (backward fill). ✅")
-            else:
-                st.info("Tidak ada nilai hilang terdeteksi.")
-
-            st.markdown("##### Penanganan Nilai Nol atau Negatif 🚨")
-            zero_or_negative = (series_data <= 0).sum()
-            if zero_or_negative > 0:
-                st.warning(f"Terdapat {zero_or_negative} nilai nol atau negatif. ❗")
-                clean_strategy = st.selectbox(
-                    "Pilih strategi penanganan nilai nol/negatif:",
-                    ["Hapus baris tersebut", "Ganti dengan nilai sangat kecil positif (1e-6)"],
-                    key="clean_strategy"
-                )
-                if clean_strategy == "Hapus baris tersebut":
-                    series_data = series_data[series_data > 0]
-                    st.info("Baris dengan nilai nol atau negatif telah dihapus. ✅")
-                elif clean_strategy == "Ganti dengan nilai yang sangat kecil positif (mis. 1e-6)":
-                    series_data = series_data.apply(lambda x: max(x, 1e-6))
-                    st.info("Nilai nol atau negatif diganti dengan 1e-6. ✅")
-            else:
-                st.info("Tidak ada nilai nol atau negatif terdeteksi.")
-
             #Opsi Transformasi ke Log-Return
             st.markdown("##### Transformasi: Log-Return 📉")
             apply_log_return = st.checkbox("Hitung log-return dari data nilai tukar ini")
