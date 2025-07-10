@@ -297,7 +297,7 @@ elif st.session_state['current_page'] == 'input_data':
             df = pd.read_csv(file, sep=';', thousands='.', decimal=',')
             if 'Date' in df.columns:
                 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-                df = df.set_index('Date')
+                df = df.dropna(subset=['Date']).sort_values('Date')
 
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
