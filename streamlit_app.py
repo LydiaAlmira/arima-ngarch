@@ -296,38 +296,42 @@ elif st.session_state['current_page'] == 'input_data':
         try:
             df = pd.read_csv(uploaded_file, delimiter=';')
             df.columns = df.columns.str.strip()
+            
             if 'Date' not in df.columns:
                 st.error("Kolom 'Date' tidak ditemukan.")
                 st.stop()
-            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-            df = df.dropna(subset=['Date']).sort_values('Date')
-            harga_col = st.selectbox("Pilih kolom harga:", df.columns)
-            df[harga_col] = pd.to_numeric(df[harga_col]
-                                          .astype(str)
-                                          .str.replace('.', '', regex=False)
-                                          .str.replace(',', '.', regex=False)
-                                          .str.replace('[^0-9.-]', '', regex=True),
-                                          errors='coerce')
+           
+            # Format sesuai formatmu: '01/08/2019 00:00'
+            df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y %H:%M', errors='coerce')
+            df = df.dropna(subset=['Date']).sort_values('Date')  # sort agar urut
+            df.set_index('Date', inplace=True)
+            
+            # Pilih kolom harga
+            harga_col = st.selectbox("Pilih kolom harga:", [col for col in df.columns if col != 'Date'])
+
+            # Konversi harga Eropa ke float
+            df[harga_col] = df[harga_col].astype(str) \
+                .str.replace('.', '', regex=False) \
+                .str.replace(',', '.', regex=False) \
+                .str.replace('[^0-9.-]', '', regex=True)
+
+            df[harga_col] = pd.to_numeric(df[harga_col], errors='coerce')
             df = df.dropna(subset=[harga_col])
-            st.session_state['df'] = df
-            st.session_state['harga_col'] = harga_col
+
+            # Simpan ke session
+            df = df.sort_index()
+            st.session_state['df_currency_raw'] = df[[harga_col]].rename(columns={harga_col: 'Value'})
+            st.session_state['df_currency_raw_multi'] = df
+            st.session_state['selected_currency'] = harga_col
+            st.session_state['variable_name'] = harga_col
+
+            # Tampilkan hasil
             st.dataframe(df.head())
+            st.success(f"Data berhasil dimuat. Periode: {df.index.min().date()} sampai {df.index.max().date()}")
+
         except Exception as e:
-            st.error(f"Error: {e}")
-    
-        df_general = load_data(uploaded_file)
-        df_general = df_general.sort_index()  # ⬅️ URUTKAN TANGGAL
-
-        st.write("🧪 Cek preview data:")
-        st.dataframe(df_general.head())
-
-        st.write("📋 Tipe data masing-masing kolom:")
-        st.write(df_general.dtypes)
-
-        st.write("🔍 Deteksi kolom numerik:")
-        for col in df_general.columns:
-            is_numeric = pd.api.types.is_numeric_dtype(df_general[col])
-            st.write(f"{col}: {'✅' if is_numeric else '❌'}")
+            st.error(f"Terjadi kesalahan saat memuat data: {e}")
+            st.stop()
 
     elif 'df_currency_raw_multi' not in st.session_state or st.session_state['df_currency_raw_multi'].empty:
         st.info("Tidak ada file diunggah. Anda dapat mengunggah file sendiri, atau coba muat data contoh.")
@@ -410,12 +414,18 @@ elif st.session_state['current_page'] == 'input_data':
         fig_raw.add_trace(go.Scatter(
             x=st.session_state['df_currency_raw'].index,
             y=st.session_state['df_currency_raw']['Value'],
-            mode='lines',
+            mode='lines+markers',
             name='Nilai Tukar',
-            line=dict(color='#5d8aa8')
+            line=dict(color='#1f77b4', width=2)
         ))
-        fig_raw.update_layout(title=f'Grafik Nilai Tukar {st.session_state["selected_currency"]}', xaxis_rangeslider_visible=True)
-        st.plotly_chart(fig_raw)
+        fig_raw.update_layout(
+            title=f'Grafik Nilai Tukar {st.session_state["selected_currency"]}',
+            xaxis_title='Tanggal',
+            yaxis_title='Nilai Tukar',
+            template='plotly_white',
+            xaxis_rangeslider_visible=True
+        )
+        st.plotly_chart(fig_raw, use_container_width=True)
 
 elif st.session_state['current_page'] == 'data_preprocessing':
     st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
