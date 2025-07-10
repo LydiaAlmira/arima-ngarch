@@ -293,21 +293,18 @@ elif st.session_state['current_page'] == 'input_data':
     uploaded_file = st.file_uploader("Pilih file CSV nilai tukar Anda ⬆️", type="csv", key="input_data_uploader")
 
     if uploaded_file is not None:
-        # Fungsi pembacaan dan pembersihan data
         def load_data(file):
-            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')  # format lokal Eropa
-
+            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')
             if 'Date' in df.columns:
                 df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
                 df = df.set_index('Date')
-                df = df[df.index.notnull()]  # ✅ hapus baris dengan Date = NaT
-         
+
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-           
             return df
 
         df_general = load_data(uploaded_file)
+        df_general = df_general.sort_index()  # ⬅️ URUTKAN TANGGAL
 
         st.write("🧪 Cek preview data:")
         st.dataframe(df_general.head())
@@ -360,8 +357,10 @@ elif st.session_state['current_page'] == 'input_data':
             st.session_state['selected_currency'] = st.selectbox("Pilih mata uang untuk analisis: 🎯", available_cols, index=current_idx, key="currency_selector")
 
             if st.session_state['selected_currency']:
-                st.session_state['df_currency_raw'] = df_general[[st.session_state['selected_currency']]].rename(columns={st.session_state['selected_currency']: 'Value'})
-                st.info(f"Mata uang '{st.session_state['selected_currency']}' telah dipilih. 🏷️")
+                st.session_state['df_currency_raw'] = df_general[[st.session_state['selected_currency']]].rename(
+                    columns={st.session_state['selected_currency']: 'Value'}
+                )
+                st.session_state['df_currency_raw'] = st.session_state['df_currency_raw'].sort_index()  # ⬅️ URUTKAN TANGGAL LAGI
 
                 if st.session_state['variable_name'] == "Nama Variabel":
                     st.session_state['variable_name'] = st.session_state['selected_currency']
@@ -509,35 +508,31 @@ elif st.session_state['current_page'] == 'data_preprocessing':
         
 elif st.session_state['current_page'] == 'data_splitting':
     st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write(f"Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
+    st.write("Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian.")
 
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         log_return_series = st.session_state.get('log_return_original', None)
         currency_name = st.session_state.get('selected_currency', '')
 
         if log_return_series is not None:
+            log_return_series = log_return_series.sort_index()  # ⬅️ pastikan urut berdasarkan tanggal
             st.write(f"Log-return nilai tukar {currency_name} yang akan dibagi 📈:")
             st.dataframe(log_return_series.head())
 
             st.subheader("Pembagian Data (Train/Test) Berdasarkan Log-Return 🔀")
-            st.info("Secara default, 30 observasi terakhir digunakan sebagai data uji. Ini umum dilakukan dalam time series.")
+            st.info("30 observasi terakhir digunakan sebagai data uji.")
 
             if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
-                # Split: 30 terakhir sebagai test
                 train = log_return_series.iloc[:-30]
                 test = log_return_series.iloc[-30:]
 
-                # Simpan ke session_state
                 st.session_state['train_data_returns'] = train
                 st.session_state['test_data_returns'] = test
 
                 st.success("Data berhasil dibagi! ✅")
-                st.write(f"Jumlah data pelatihan: {len(train)}")
-                st.write(f"Jumlah data pengujian: {len(test)}")
                 st.write(f"Periode pelatihan: {train.index.min().strftime('%d %B %Y')} – {train.index.max().strftime('%d %B %Y')}")
                 st.write(f"Periode pengujian: {test.index.min().strftime('%d %B %Y')} – {test.index.max().strftime('%d %B %Y')}")
 
-                # Visualisasi Plotly
                 fig_split = go.Figure()
                 fig_split.add_trace(go.Scatter(x=train.index, y=train.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
                 fig_split.add_trace(go.Scatter(x=test.index, y=test.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
@@ -546,7 +541,7 @@ elif st.session_state['current_page'] == 'data_splitting':
         else:
             st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
     else:
-        st.warning("Tidak ada data harga tersedia. Pastikan Anda telah mengunggah dan memproses data terlebih dahulu. ⚠️")
+        st.warning("Data harga belum tersedia. Unggah dan pilih mata uang terlebih dahulu.")
 
 
 elif st.session_state['current_page'] == 'stasioneritas_data':
