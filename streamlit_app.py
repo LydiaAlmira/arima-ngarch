@@ -553,6 +553,11 @@ elif st.session_state['current_page'] == 'data_splitting':
                 train = log_return_series.iloc[:-30]
                 test = log_return_series.iloc[-30:]
 
+                # Simpan dengan nama yang konsisten untuk dipakai di ADF test
+                st.session_state['log_return_train'] = train
+                st.session_state['log_return_test'] = test
+
+                # Simpan juga dengan nama lama jika masih digunakan di bagian lain
                 st.session_state['train_data_returns'] = train
                 st.session_state['test_data_returns'] = test
 
@@ -560,11 +565,13 @@ elif st.session_state['current_page'] == 'data_splitting':
                 st.write(f"Periode pelatihan: {train.index.min().strftime('%d %B %Y')} – {train.index.max().strftime('%d %B %Y')}")
                 st.write(f"Periode pengujian: {test.index.min().strftime('%d %B %Y')} – {test.index.max().strftime('%d %B %Y')}")
 
+                # Visualisasi
                 fig_split = go.Figure()
                 fig_split.add_trace(go.Scatter(x=train.index, y=train.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
                 fig_split.add_trace(go.Scatter(x=test.index, y=test.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
                 fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
                 st.plotly_chart(fig_split)
+
         else:
             st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
     else:
