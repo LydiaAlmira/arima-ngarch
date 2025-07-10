@@ -292,17 +292,29 @@ elif st.session_state['current_page'] == 'input_data':
     df_general = pd.DataFrame()
     uploaded_file = st.file_uploader("Pilih file CSV nilai tukar Anda ⬆️", type="csv", key="input_data_uploader")
 
-    if uploaded_file is not None:
-        def load_data(file):
-            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')
-            if 'Date' in df.columns:
-                df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-                df = df.dropna(subset=['Date']).sort_values('Date')
-
-            for col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            return df
-
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file, delimiter=';')
+            df.columns = df.columns.str.strip()
+            if 'Date' not in df.columns:
+                st.error("Kolom 'Date' tidak ditemukan.")
+                st.stop()
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+            df = df.dropna(subset=['Date']).sort_values('Date')
+            harga_col = st.selectbox("Pilih kolom harga:", df.columns)
+            df[harga_col] = pd.to_numeric(df[harga_col]
+                                          .astype(str)
+                                          .str.replace('.', '', regex=False)
+                                          .str.replace(',', '.', regex=False)
+                                          .str.replace('[^0-9.-]', '', regex=True),
+                                          errors='coerce')
+            df = df.dropna(subset=[harga_col])
+            st.session_state['df'] = df
+            st.session_state['harga_col'] = harga_col
+            st.dataframe(df.head())
+        except Exception as e:
+            st.error(f"Error: {e}")
+    
         df_general = load_data(uploaded_file)
         df_general = df_general.sort_index()  # ⬅️ URUTKAN TANGGAL
 
