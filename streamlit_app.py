@@ -18,6 +18,7 @@ from scipy.stats import kstest
 from statsmodels.stats.diagnostic import acorr_ljungbox
 import pickle
 import os
+from datetime import datetime
 
 def load_data(file_source=None, default_filename=None):
     import pandas as pd
@@ -420,12 +421,6 @@ elif st.session_state['current_page'] == 'input_data':
         st.plotly_chart(fig_raw, use_container_width=True)
 
 elif st.session_state['current_page'] == 'data_preprocessing':
-    import pickle
-    from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-    import matplotlib.pyplot as plt
-    import plotly.graph_objs as go
-    from datetime import datetime
-    
     st.markdown('<div class="main-header">Data Preprocessing, Splitting & Stasioneritas ⚙️✂️🧪</div>', unsafe_allow_html=True)
     st.write("Lakukan pembersihan, transformasi, pembagian data, dan analisis stasioneritas nilai tukar.")
 
