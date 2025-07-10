@@ -612,8 +612,8 @@ if log_return is not None:
         except Exception as e:
             st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
 
-else:
-    st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
+    else:
+        st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
 
 
     # Plot ACF & PACF hanya jika data sudah stasioner
