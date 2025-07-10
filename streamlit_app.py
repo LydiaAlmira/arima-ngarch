@@ -295,15 +295,12 @@ elif st.session_state['current_page'] == 'input_data':
     if uploaded_file is not None:
         # Fungsi pembacaan dan pembersihan data
         def load_data(file):
-            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')  # jika format lokal Eropa
+            df = pd.read_csv(file, sep=';', thousands='.', decimal=',')  # format Eropa
             if 'Date' in df.columns:
-                df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+                df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y', errors='coerce')
                 df = df.set_index('Date')
-
-            # Paksa semua kolom selain 'Date' ke numerik
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-
             return df
 
         df_general = load_data(uploaded_file)
