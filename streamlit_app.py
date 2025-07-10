@@ -569,20 +569,24 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
 elif st.session_state['current_page'] == 'ARIMA Model':
     st.markdown('<div class="main-header">MODEL ARIMA 📈</div>', unsafe_allow_html=True)
-    st.write(f"Bangun dan evaluasi model ARIMA pada data return mata uang {st.session_state.get('selected_currency', '')}.")
+    st.write(f"Bangun dan evaluasi model ARIMA pada data log-return mata uang **{st.session_state.get('selected_currency', '')}**.")
 
-    if 'train_data_returns' in st.session_state and not st.session_state['train_data_returns'].empty:
-        train_data_returns = st.session_state['train_data_returns']
-        st.write(f"Data pelatihan return ({st.session_state.get('selected_currency', '')}):")
+    # Ambil data train dari log-return
+    if 'log_return_train' in st.session_state and not st.session_state['log_return_train'].empty:
+        train_data_returns = st.session_state['log_return_train']
+        st.write("📊 Data pelatihan log-return (Train):")
         st.dataframe(train_data_returns.head())
+    else:
+        st.warning("📛 Data log-return pelatihan belum tersedia. Silakan lakukan preprocessing dan splitting terlebih dahulu.")
+        st.stop()
 
-    # 1. Tentukan Ordo ARIMA
+    # 1. Input Ordo
     st.subheader("1. Tentukan Ordo ARIMA (p, d, q) 🔢")
     p = st.number_input("Ordo AR (p):", min_value=0, max_value=5, value=1, key="arima_p")
-    d = st.number_input("Ordo Differencing (d):", min_value=0, max_value=0, value=0, key="arima_d")
+    d = st.number_input("Ordo Differencing (d):", min_value=0, max_value=0, value=0, key="arima_d")  # d=0 karena log-return
     q = st.number_input("Ordo MA (q):", min_value=0, max_value=5, value=1, key="arima_q")
 
-    if st.button("Latih Model ARIMA ▶️", key="train_arima_button"):
+    if st.button("▶️ Latih Model ARIMA"):
         try:
             with st.spinner("Melatih model ARIMA..."):
                 model_arima = ARIMA(train_data_returns, order=(p, d, q))
@@ -591,16 +595,19 @@ elif st.session_state['current_page'] == 'ARIMA Model':
                 st.session_state['model_arima_fit'] = model_arima_fit
                 st.session_state['arima_residuals'] = model_arima_fit.resid.dropna()
 
-                st.success("Model ARIMA berhasil dilatih! 🎉")
+                st.success("✅ Model ARIMA berhasil dilatih!")
 
+                # 2. Ringkasan Model
                 st.subheader("2. Ringkasan Model ARIMA")
                 st.text(model_arima_fit.summary().as_text())
 
+                # 3. Uji Signifikansi Koefisien
                 st.subheader("3. Uji Signifikansi Koefisien")
                 df_results = pd.read_html(model_arima_fit.summary().tables[1].as_html(), header=0, index_col=0)[0]
                 st.dataframe(df_results[['P>|z|']].style.applymap(
                     lambda x: 'background-color: #d4edda' if x < 0.05 else 'background-color: #f8d7da'))
 
+                # 4. Uji Asumsi Residual
                 st.subheader("4. Uji Asumsi Residual ARIMA")
                 resid = model_arima_fit.resid.dropna()
 
@@ -610,34 +617,37 @@ elif st.session_state['current_page'] == 'ARIMA Model':
                 fig_res.update_layout(title_text='Residual ARIMA', xaxis_rangeslider_visible=True)
                 st.plotly_chart(fig_res)
 
-                # KS Test
+                # Kolmogorov-Smirnov Test
                 standardized_resid = (resid - np.mean(resid)) / np.std(resid)
                 ks_stat, ks_pvalue = kstest(standardized_resid, 'norm')
-                st.write(f"Statistik Kolmogorov-Smirnov: {ks_stat:.4f}")
-                st.write(f"P-value: {ks_pvalue:.4f}")
+                st.write(f"**Kolmogorov-Smirnov Test:**")
+                st.write(f"• Statistik: `{ks_stat:.4f}`")
+                st.write(f"• P-value: `{ks_pvalue:.4f}`")
                 if ks_pvalue > 0.05:
-                    st.success("Residual terdistribusi normal. (Gagal tolak H0)")
+                    st.success("Residual terdistribusi normal (Gagal tolak H₀)")
                 else:
-                    st.warning("Residual tidak normal (Tolak H0).")
+                    st.warning("Residual tidak normal (Tolak H₀)")
 
-                # Ljung-Box
+                # Ljung-Box Test
                 lb_test = acorr_ljungbox(resid, lags=[10], return_df=True)
-                st.write("Ljung-Box Test:", lb_test)
+                st.write("**Ljung-Box Test:**")
+                st.dataframe(lb_test)
                 if lb_test['lb_pvalue'].iloc[0] > 0.05:
-                    st.success("Tidak ada autokorelasi signifikan (Gagal tolak H0)")
+                    st.success("Tidak ada autokorelasi signifikan (Gagal tolak H₀)")
                 else:
-                    st.warning("Terdapat autokorelasi signifikan (Tolak H0)")
+                    st.warning("Terdapat autokorelasi signifikan (Tolak H₀)")
 
-                # ARCH Test (Ljung-Box pada residual kuadrat)
+                # ARCH Test
                 lb_arch = acorr_ljungbox(resid**2, lags=[10], return_df=True)
-                st.write("ARCH Test (Ljung-Box pada residual kuadrat):", lb_arch)
+                st.write("**ARCH Test (Ljung-Box pada residual kuadrat):**")
+                st.dataframe(lb_arch)
                 has_arch = lb_arch['lb_pvalue'].iloc[0] < 0.05
                 if not has_arch:
-                    st.success("Tidak ada efek ARCH signifikan (Gagal tolak H0)")
+                    st.success("Tidak ada efek ARCH signifikan (Gagal tolak H₀)")
                 else:
-                    st.warning("Ada efek ARCH signifikan (Tolak H0)")
+                    st.warning("Ada efek ARCH signifikan (Tolak H₀)")
 
-                # Simpan hasil uji ke session dan optional pickle
+                # Simpan hasil uji ke file
                 st.session_state['arima_residual_has_arch_effect'] = has_arch
                 uji_asumsi = {
                     'ks_stat': ks_stat,
@@ -654,14 +664,12 @@ elif st.session_state['current_page'] == 'ARIMA Model':
                 try:
                     with open(file_name, "wb") as f:
                         pickle.dump(uji_asumsi, f)
-                    st.info(f"Hasil uji asumsi disimpan: {file_name}")
+                    st.info(f"Hasil uji asumsi disimpan ke: `{file_name}`")
                 except Exception as e:
                     st.warning(f"Gagal menyimpan hasil uji asumsi: {e}")
 
         except Exception as e:
-            st.error(f"Gagal melatih model ARIMA: {e}")
-    else:
-        st.warning("Data pelatihan belum tersedia. Silakan lakukan splitting terlebih dahulu.")
+            st.error(f"❌ Gagal melatih model ARIMA: {e}")
 
 elif st.session_state['current_page'] == 'GARCH (Model & Prediksi)':
     st.markdown('<div class="main-header">GARCH (Model & Prediksi) 🌪️📈</div>', unsafe_allow_html=True)
