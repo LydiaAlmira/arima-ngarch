@@ -461,7 +461,7 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                     st.session_state['log_return_series'] = log_return_series
 
                     if 'log_return_original' not in st.session_state:
-                    st.session_state['log_return_original'] = log_return_series.copy()
+                        st.session_state['log_return_original'] = log_return_series.copy()
 
                     st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
                     st.write("📉 Grafik Log-Return:")
