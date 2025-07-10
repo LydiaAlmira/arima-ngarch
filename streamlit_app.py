@@ -552,26 +552,32 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
         if st.button("Jalankan Uji ADF pada Log-Return Train ▶️", key="run_adf_test_train"):
             try:
-                result = adfuller(log_return_train.dropna())
+                result = adfuller(log_return_train)
                 stat = result[0]
                 pval = result[1]
+                critical_values = result[4]
 
                 st.write(f"**ADF Statistic:** {stat:.6f}")
                 st.write(f"**p-value:** {pval:.6f}")
+                st.write("**Nilai Kritis:**")
+                for key, value in critical_values.items():
+                    st.write(f"  {key}: {value:.4f}")
 
-                if pval < 0.05:
-                    st.success("Data log-return (train) stasioner (tolak H0). ✅")
+                if p_value < 0.05:
+                    st.success("✅ Data log-return (train) stasioner (tolak H0)")
+                    st.session_state['is_stationary_adf'] = True
+                    st.session_state['final_series'] = log_return_train
+                    st.session_state['processed_returns'] = log_return_train
                 else:
                     st.warning("Data log-return (train) tidak stasioner (gagal tolak H0). ⚠️")
-
-                st.session_state['adf_result'] = result
-                st.session_state['adf_pvalue'] = pval
-                st.session_state['final_series'] = log_return_train
-                st.session_state['processed_returns'] = log_return_train
-
+                    st.session_state['is_stationary_adf'] = False
+                
             except Exception as e:
-                st.error(f"Gagal menjalankan uji ADF: {e}")
+                st.error(f"Terjadi kesalahan saat menjalankan ADF test: {e}")
+    else:
+        st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
 
+    
         # Jika stasioner, tampilkan ACF/PACF
         if st.session_state.get('adf_pvalue', 1.0) <= 0.05:
             st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
@@ -596,8 +602,10 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                     st.success("Plot ACF & PACF berhasil ditampilkan. 🎯")
                 except Exception as e:
                     st.error(f"Kesalahan saat membuat plot ACF/PACF: {e}")
+        else:
+            st.warning("❗ Data belum dipastikan stasioner. Jalankan ADF test terlebih dahulu.")
     else:
-        st.warning("Data log-return (train) belum tersedia. Lakukan pembagian data terlebih dahulu.")
+        st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
