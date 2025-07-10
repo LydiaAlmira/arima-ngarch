@@ -395,10 +395,6 @@ elif st.session_state['current_page'] == 'input_data':
         else:
             st.warning("🚫 Tidak ada kolom numerik terdeteksi. Pastikan data nilai tukar bertipe angka.")
             st.session_state['df_currency_raw'] = pd.DataFrame()
-    else:
-        st.warning("🚫 Tidak ada data yang berhasil dimuat.")
-        st.session_state['df_currency_raw_multi'] = pd.DataFrame()
-        st.session_state['df_currency_raw'] = pd.DataFrame()
 
         with col2:
             st.text_input("Jumlah Data:", value="0", disabled=True)
