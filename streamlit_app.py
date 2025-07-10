@@ -212,8 +212,8 @@ menu_items = {
     "HOME 🏠": "home",
     "INPUT DATA 📥": "input_data",
     "DATA PREPROCESSING 🧹": "data_preprocessing",
-    "STASIONERITAS DATA 📊": "stasioneritas_data",
     "DATA SPLITTING ✂️": "data_splitting",
+    "STASIONERITAS DATA 📊": "stasioneritas_data",
     "ARIMA Model": "ARIMA Model",
     "GARCH (Model & Prediksi)": "GARCH (Model & Prediksi)",
     "NGARCH (Model & Prediksi)": "NGARCH (Model & Prediksi)",
@@ -249,8 +249,8 @@ if st.session_state['current_page'] == 'home':
         <li><b>HOME 🏠:</b> Halaman utama yang menjelaskan tujuan dan metode sistem prediksi.</li>
         <li><b>INPUT DATA 📥:</b> Unggah data time series nilai tukar mata uang (.csv).</li>
         <li><b>DATA PREPROCESSING 🧹:</b> Bersihkan dan transformasikan data, termasuk perhitungan return.</li>
-        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas return (ADF), dan analisis ACF & PACF.</li>
         <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi data latih dan uji.</li>
+        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas return (ADF), dan analisis ACF & PACF.</li>
         <li><b>MODEL ARIMA (Mean Equation) ⚙️:</b> 
             Bangun model ARIMA pada data return <i>dan langsung prediksi nilai tukar</i>, termasuk:
             <ul>
@@ -468,10 +468,24 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             else:
                 st.info("Tidak ada nilai nol atau negatif terdeteksi. 👍 Data siap untuk transformasi!")
 
+            #Opsi Transformasi ke Log-Return 📈
+            st.markdown("##### Transformasi: Log-Return 📉")
+            apply_log_return = st.checkbox("Hitung log-return dari data nilai tukar ini")
+
+            if apply_log_return:
+                log_return_series = np.log(series_data).diff().dropna()
+
+                st.session_state['log_return_series'] = log_return_series
+                st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
+                st.write("Pratinjau log-return:")
+                st.line_chart(log_return_series)
+            else:
+                st.session_state['log_return_series'] = None  # reset kalau tidak dicentang
+
             # Simpan hasil preprocessing ke session_state
             st.session_state['preprocessed_data'] = series_data
             st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
-            st.session_state['full_prices_series'] = series_data  # Tambahkan ini
+            st.session_state['full_prices_series'] = series_data  
 
             st.success("Preprocessing selesai! Data siap digunakan untuk uji stasioneritas. 🧪")
             st.write("Pratinjau data hasil preprocessing:")
@@ -482,6 +496,48 @@ elif st.session_state['current_page'] == 'data_preprocessing':
     else:
         st.warning("Silakan unggah data terlebih dahulu. 📂")
         
+elif st.session_state['current_page'] == 'data_splitting':
+    st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
+    st.write(f"Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
+
+    if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
+        log_return_series = st.session_state.get('log_return_series', None)
+        currency_name = st.session_state.get('selected_currency', '')
+
+        if log_return_series is not None:
+            st.write(f"Log-return nilai tukar {currency_name} yang akan dibagi 📈:")
+            st.dataframe(log_return_series.head())
+
+            st.subheader("Pembagian Data (Train/Test) Berdasarkan Log-Return 🔀")
+            st.info("Secara default, 30 observasi terakhir digunakan sebagai data uji. Ini umum dilakukan dalam time series.")
+
+            if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
+                # Split: 30 terakhir sebagai test
+                train = log_return_series.iloc[:-30]
+                test = log_return_series.iloc[-30:]
+
+                # Simpan ke session_state
+                st.session_state['train_data_returns'] = train
+                st.session_state['test_data_returns'] = test
+
+                st.success("Data berhasil dibagi! ✅")
+                st.write(f"Jumlah data pelatihan: {len(train)}")
+                st.write(f"Jumlah data pengujian: {len(test)}")
+                st.write(f"Periode pelatihan: {train.index.min().strftime('%d %B %Y')} – {train.index.max().strftime('%d %B %Y')}")
+                st.write(f"Periode pengujian: {test.index.min().strftime('%d %B %Y')} – {test.index.max().strftime('%d %B %Y')}")
+
+                # Visualisasi Plotly
+                fig_split = go.Figure()
+                fig_split.add_trace(go.Scatter(x=train.index, y=train.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
+                fig_split.add_trace(go.Scatter(x=test.index, y=test.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
+                fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
+                st.plotly_chart(fig_split)
+        else:
+            st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
+    else:
+        st.warning("Tidak ada data harga tersedia. Pastikan Anda telah mengunggah dan memproses data terlebih dahulu. ⚠️")
+
+
 elif st.session_state['current_page'] == 'stasioneritas_data':
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
     st.write(f"Untuk pemodelan time series, data harus stasioner. Kita akan menguji stasioneritas pada data {st.session_state.get('selected_currency', '')} dan memeriksa autokorelasi. 🔍")
@@ -491,53 +547,68 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         st.write(f"5 baris pertama data nilai tukar {st.session_state.get('selected_currency', '')} yang akan diuji:")
         st.dataframe(series_to_test.head())
 
-        st.subheader("Uji Augmented Dickey-Fuller (ADF) 🤔")
-        if st.button("Jalankan Uji ADF ▶️", key="run_adf_test"):
-            try:
-                result_adf = adfuller(series_to_test)
-                st.session_state['adf_result'] = result_adf
-                st.session_state['adf_pvalue'] = result_adf[1]
-                st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
-                st.write(f"**P-value:** {result_adf[1]:.4f}")
-                st.write(f"**Jumlah Lags Optimal:** {result_adf[2]}")
+from statsmodels.tsa.stattools import adfuller
+
+st.subheader("Uji Stasioneritas dengan Augmented Dickey-Fuller (ADF) 🤔")
+
+# Ambil data log-return dari hasil preprocessing
+log_return = st.session_state.get('log_return_series', None)
+
+if log_return is not None:
+    st.write("Log-return tersedia. Siap untuk diuji stasioneritas.")
+
+    if st.button("Jalankan Uji ADF pada Log-Return ▶️", key="run_adf_test"):
+        try:
+            result_adf = adfuller(log_return)
+            st.session_state['adf_result'] = result_adf
+            st.session_state['adf_pvalue'] = result_adf[1]
+
+            st.write(f"**Statistik ADF:** {result_adf[0]:.4f}")
+            st.write(f"**P-value:** {result_adf[1]:.4f}")
+            st.write(f"**Jumlah Lags Optimal:** {result_adf[2]}")
+            st.write("**Nilai Kritis:**")
+            for key, value in result_adf[4].items():
+                st.write(f"  {key}: {value:.4f}")
+
+            if result_adf[1] <= 0.05:
+                st.success("Log-return **stasioner** (tolak H0). ✅")
+                st.session_state['is_stationary_adf'] = True
+                st.session_state['final_series'] = log_return
+                st.session_state['processed_returns'] = log_return
+            else:
+                st.warning("Log-return **tidak stasioner** (gagal tolak H0). ⚠️")
+                st.info("Akan dilakukan differencing otomatis untuk mencapai stasioneritas. 🔄")
+
+                # Lakukan 1x differencing
+                differenced = log_return.diff().dropna()
+                result_adf_diff = adfuller(differenced)
+                st.session_state['differenced_data'] = differenced
+
+                st.write("Hasil setelah differencing:")
+                st.dataframe(differenced.head())
+
+                st.subheader("Uji ADF setelah Differencing")
+                st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
+                st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
+                st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
                 st.write("**Nilai Kritis:**")
-                for key, value in result_adf[4].items():
+                for key, value in result_adf_diff[4].items():
                     st.write(f"  {key}: {value:.4f}")
 
-                if result_adf[1] <= 0.05:
-                    st.success("Data **stasioner** (tolak H0: ada akar unit). ✅")
+                if result_adf_diff[1] <= 0.05:
+                    st.success("Setelah differencing, data **stasioner**. ✅")
                     st.session_state['is_stationary_adf'] = True
-                    st.session_state['final_series'] = series_to_test
-                    st.session_state['processed_returns'] = series_to_test
+                    st.session_state['final_series'] = differenced
+                    st.session_state['processed_returns'] = differenced
                 else:
-                    st.warning("Data **tidak stasioner** (gagal tolak H0: ada akar unit). ⚠️")
-                    st.info("Akan dilakukan transformasi differencing secara otomatis... 🔄")
-                    differenced = series_to_test.diff().dropna() 
-                    st.session_state['differenced_data'] = differenced
-                    st.write("Hasil data setelah differencing (5 baris pertama):")
-                    st.dataframe(differenced.head())
-                    
-                    st.subheader("Uji ADF pada Data Setelah Differencing 📉")
-                    result_adf_diff = adfuller(differenced)
-                    st.session_state['adf_diff_result'] = result_adf_diff
-                    st.session_state['adf_diff_pvalue'] = result_adf_diff[1] 
-                    st.write(f"**Statistik ADF:** {result_adf_diff[0]:.4f}")
-                    st.write(f"**P-value:** {result_adf_diff[1]:.4f}")
-                    st.write(f"**Jumlah Lags Optimal:** {result_adf_diff[2]}")
-                    st.write("**Nilai Kritis:**")
-                    for key, value in result_adf_diff[4].items():
-                        st.write(f"  {key}: {value:.4f}")
+                    st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
+                    st.session_state['is_stationary_adf'] = False
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
 
-                    if result_adf_diff[1] <= 0.05: 
-                        st.success("Setelah differencing, data menjadi **stasioner**. ✅") 
-                        st.session_state['is_stationary_adf'] = True
-                        st.session_state['final_series'] = differenced
-                        st.session_state['processed_returns'] = differenced 
-                    else:
-                        st.warning("Data masih **tidak stasioner** setelah satu kali differencing. ❗")
-                        st.session_state['is_stationary_adf'] = False
-            except Exception as e:
-                 st.error(f"Terjadi kesalahan saat menjalankan Uji ADF: {e}")
+else:
+    st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
+
 
     # Plot ACF & PACF hanya jika data sudah stasioner
     if st.session_state.get('adf_pvalue', 1.0) <= 0.05 or st.session_state.get('adf_diff_pvalue', 1.0) <= 0.05:
@@ -545,65 +616,27 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
 
         lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
-
+       
         if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
             try:
-                # Plot ACF
-                fig_acf, ax_acf = plt.subplots(figsize=(8, 4))  # Lebar 8, tinggi 4 inch
-                plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=ax_acf)
-                ax_acf.set_title(f"ACF {st.session_state.get('selected_currency', '')}")
-                st.pyplot(fig_acf)
-                
-                # Plot PACF
-                fig_pacf, ax_pacf = plt.subplots(figsize=(8, 4))  # Lebar 8, tinggi 4 inch
-                plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=ax_pacf)
-                ax_pacf.set_title(f"PACF {st.session_state.get('selected_currency', '')}")
-                st.pyplot(fig_pacf)
+                fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+                plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
+                axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
+                axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
+
+                fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return (Train)", fontsize=14)
+                plt.tight_layout()
+                st.pyplot(fig)
 
                 st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
     else:
         st.info("Data belum stasioner. Silakan jalankan uji ADF terlebih dahulu. ⚠️")
-        
-elif st.session_state['current_page'] == 'data_splitting':
-    st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write(f"Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian untuk melatih dan mengevaluasi model ARIMA. Pembagian dilakukan secara berurutan karena ini adalah data time series. 📏")
 
-    if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
-        data_to_split = st.session_state['df_currency_raw']['Value']
-        currency_name = st.session_state.get('selected_currency', '')
-
-        st.write(f"Data harga nilai tukar {currency_name} yang akan dibagi 📈:")
-        st.dataframe(data_to_split.head())
-
-        st.subheader("Konfigurasi Pembagian Data ⚙️")
-        total_length = len(data_to_split)
-        default_train_length = 1304  # contoh fix: 1304
-        train_length = st.number_input("Jumlah data pelatihan (default: 1304):", min_value=1, max_value=total_length-1, value=default_train_length, step=1)
-
-        if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
-            train_data = data_to_split.iloc[:train_length]
-            test_data = data_to_split.iloc[train_length:]
-
-            st.session_state['train_data_returns'] = train_data
-            st.session_state['test_data_returns'] = test_data
-
-            st.success("Data berhasil dibagi! ✅")
-            st.write(f"Jumlah data pelatihan: {len(train_data)}")
-            st.write(f"Jumlah data pengujian: {len(test_data)}")
-            st.write(f"Periode pelatihan: {train_data.index.min().strftime('%d %B %Y')} – {train_data.index.max().strftime('%d %B %Y')}")
-            st.write(f"Periode pengujian: {test_data.index.min().strftime('%d %B %Y')} – {test_data.index.max().strftime('%d %B %Y')}")
-
-            # Visualisasi
-            st.subheader(f"Visualisasi Pembagian Data {currency_name} 📈📉")
-            fig_split = go.Figure()
-            fig_split.add_trace(go.Scatter(x=train_data.index, y=train_data.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
-            fig_split.add_trace(go.Scatter(x=test_data.index, y=test_data.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
-            fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
-            st.plotly_chart(fig_split)
-    else:
-        st.warning("Tidak ada data harga tersedia untuk dibagi. Pastikan Anda telah mengunggah data pada menu 'Input Data'. ⚠️")
 
 elif st.session_state['current_page'] == 'ARIMA Model':
     st.markdown('<div class="main-header">MODEL ARIMA 📈</div>', unsafe_allow_html=True)
