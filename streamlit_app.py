@@ -212,8 +212,6 @@ menu_items = {
     "HOME 🏠": "home",
     "INPUT DATA 📥": "input_data",
     "DATA PREPROCESSING 🧹": "data_preprocessing",
-    "DATA SPLITTING ✂️": "data_splitting",
-    "STASIONERITAS DATA 📊": "stasioneritas_data",
     "ARIMA Model": "ARIMA Model",
     "GARCH (Model & Prediksi)": "GARCH (Model & Prediksi)",
     "NGARCH (Model & Prediksi)": "NGARCH (Model & Prediksi)",
@@ -249,8 +247,6 @@ if st.session_state['current_page'] == 'home':
         <li><b>HOME 🏠:</b> Halaman utama yang menjelaskan tujuan dan metode sistem prediksi.</li>
         <li><b>INPUT DATA 📥:</b> Unggah data time series nilai tukar mata uang (.csv).</li>
         <li><b>DATA PREPROCESSING 🧹:</b> Bersihkan dan transformasikan data, termasuk perhitungan return.</li>
-        <li><b>DATA SPLITTING ✂️:</b> Pisahkan data menjadi data latih dan uji.</li>
-        <li><b>STASIONERITAS DATA 📊:</b> Uji stasioneritas return (ADF), dan analisis ACF & PACF.</li>
         <li><b>MODEL ARIMA (Mean Equation) ⚙️:</b> 
             Bangun model ARIMA pada data return <i>dan langsung prediksi nilai tukar</i>, termasuk:
             <ul>
@@ -424,15 +420,22 @@ elif st.session_state['current_page'] == 'input_data':
         st.plotly_chart(fig_raw, use_container_width=True)
 
 elif st.session_state['current_page'] == 'data_preprocessing':
-    st.markdown('<div class="main-header">Data Preprocessing ⚙️🧹</div>', unsafe_allow_html=True)
-    st.write("Lakukan pembersihan dan transformasi data nilai tukar.✨")
+    import pickle
+    from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+    import matplotlib.pyplot as plt
+    import plotly.graph_objs as go
+    from datetime import datetime
+    
+    st.markdown('<div class="main-header">Data Preprocessing, Splitting & Stasioneritas ⚙️✂️🧪</div>', unsafe_allow_html=True)
+    st.write("Lakukan pembersihan, transformasi, pembagian data, dan analisis stasioneritas nilai tukar.")
 
+    #Cek data mentah
     if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
         df_raw = st.session_state['df_currency_raw'].copy()
         st.write(f"Data nilai tukar mentah untuk {st.session_state.get('selected_currency', '')}: 📊")
         st.dataframe(df_raw.head())
 
-        st.subheader("Pilih Kolom Data dan Transformasi 🔄")
+        st.subheader("Pilih Kolom Data dan Transformasi!")
 
         #Dropdown untuk memilih kolom numerik
         numeric_cols = [col for col in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[col])]
@@ -444,17 +447,17 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                 key="selected_column"
             )
             series_data = df_raw[selected_column]
-            # Opsi Transformasi ke Log-Return
+            
+            # Transformasi ke Log-Return
             st.markdown("##### Transformasi: Log-Return 📉")
-            apply_log_return = st.checkbox("Hitung log-return dari data nilai tukar ini")
+            apply_log_return = st.checkbox("Hitung log-return", value=True)
 
             log_return_series = None
             if apply_log_return:
                 try:
-                    # 💡 Cek dan sesuaikan skala dulu
                     if series_data.max() > 100000:
                         series_data = series_data / 1000
-                        st.info("Skala data dibagi 1000 agar log-return lebih presisi. 📉")
+                        st.info("Skala data dibagi 1000 agar log-return lebih presisi.")
 
                     # Hitung log-return
                     log_return_series = np.log(series_data).diff().dropna()
@@ -478,134 +481,96 @@ elif st.session_state['current_page'] == 'data_preprocessing':
 
                 except Exception as e:
                     st.error(f"Gagal menghitung log-return: {e}")
-                    st.session_state['log_return_series'] = None
+                    st.stop()
             else:
-                st.session_state['log_return_series'] = None  # reset kalau tidak dicentang
-
-            # Simpan hasil preprocessing ke session_state
-            st.session_state['preprocessed_data'] = series_data
-            st.session_state['original_prices'] = df_raw[st.session_state['selected_column']]
-            st.session_state['full_prices_series'] = series_data  
-
-            st.success("Preprocessing selesai!")
-        else:
-            st.warning("Tidak ditemukan kolom numerik untuk diproses. Pastikan file yang diunggah sesuai format.")
-    else:
-        st.warning("Silakan unggah data terlebih dahulu. 📂")
+                st.warning("Silahkan centang opsi log-return untuk melanjutkan.")
         
-elif st.session_state['current_page'] == 'data_splitting':
-    st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
-    st.write("Pisahkan data harga nilai tukar menjadi set pelatihan dan pengujian.")
-
-    if 'df_currency_raw' in st.session_state and not st.session_state['df_currency_raw'].empty:
-        log_return_series = st.session_state.get('log_return_original', None)
-        currency_name = st.session_state.get('selected_currency', '')
-
-        if log_return_series is not None:
-            log_return_series = log_return_series.sort_index()  # ⬅️ pastikan urut berdasarkan tanggal
-            st.write(f"Log-return nilai tukar {currency_name} yang akan dibagi 📈:")
-            st.dataframe(log_return_series.head())
-
-            st.subheader("Pembagian Data (Train/Test) Berdasarkan Log-Return 🔀")
-            st.info("30 observasi terakhir digunakan sebagai data uji.")
-
+            # === SPLITTING ===
+            st.markdown('<div class="main-header">Data Splitting ✂️📊</div>', unsafe_allow_html=True)
+            st.info("📌 30 observasi terakhir digunakan sebagai data uji.")
             if st.button("Lakukan Pembagian Data ▶️", key="split_data_button"):
+                log_return_series = st.session_state['log_return_original']
+                log_return_series = log_return_series.sort_index()
+
                 train = log_return_series.iloc[:-30]
                 test = log_return_series.iloc[-30:]
 
-                # Simpan dengan nama yang konsisten untuk dipakai di ADF test
                 st.session_state['log_return_train'] = train
                 st.session_state['log_return_test'] = test
-
-                # Simpan juga dengan nama lama jika masih digunakan di bagian lain
                 st.session_state['train_data_returns'] = train
                 st.session_state['test_data_returns'] = test
 
-                st.success("Data berhasil dibagi! ✅")
-                st.write(f"Periode pelatihan: {train.index.min().strftime('%d %B %Y')} – {train.index.max().strftime('%d %B %Y')}")
-                st.write(f"Periode pengujian: {test.index.min().strftime('%d %B %Y')} – {test.index.max().strftime('%d %B %Y')}")
-
+                st.success("✅ Data berhasil dibagi menjadi Train dan Test.")
+                st.write(f"Periode Train: {train.index.min().strftime('%d %b %Y')} – {train.index.max().strftime('%d %b %Y')}")
+                st.write(f"Periode Test: {test.index.min().strftime('%d %b %Y')} – {test.index.max().strftime('%d %b %Y')}")
+                
                 # Visualisasi
                 fig_split = go.Figure()
-                fig_split.add_trace(go.Scatter(x=train.index, y=train.values, mode='lines', name='Data Pelatihan', line=dict(color='#3f72af')))
-                fig_split.add_trace(go.Scatter(x=test.index, y=test.values, mode='lines', name='Data Pengujian', line=dict(color='#ff7f0e')))
-                fig_split.update_layout(title_text=f'Pembagian Data {currency_name}', xaxis_rangeslider_visible=True)
+                fig_split.add_trace(go.Scatter(x=train.index, y=train.values, mode='lines', name='Train', line=dict(color='#3f72af')))
+                fig_split.add_trace(go.Scatter(x=test.index, y=test.values, mode='lines', name='Test', line=dict(color='#ff7f0e')))
+                fig_split.update_layout(title='Train/Test Split Log-Return', xaxis_rangeslider_visible=True)
                 st.plotly_chart(fig_split)
 
-        else:
-            st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
-    else:
-        st.warning("Data harga belum tersedia. Unggah dan pilih mata uang terlebih dahulu.")
+            # === ADF TEST ===
+            st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
+            adf_results_path = "models/adf_test_results_clean.pkl"
 
-
-elif st.session_state['current_page'] == 'stasioneritas_data':
-    import pickle
-    from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-    import matplotlib.pyplot as plt
-
-    st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
-    st.write("Halaman ini menampilkan hasil uji stasioneritas (ADF Test) dan plot ACF/PACF untuk data log-return hasil pembagian data train.")
-
-    currencies = ['IDR', 'MYR', 'SGD']
-    adf_results_path = "models/adf_test_results_clean.pkl"
-
-    # Load hasil ADF
-    try:
-        with open(adf_results_path, "rb") as f:
-            adf_results = pickle.load(f)
-        st.success("✅ Hasil ADF Test berhasil dimuat dari file.")
-    except Exception as e:
-        st.error(f"Gagal memuat hasil ADF dari file `{adf_results_path}`: {e}")
-        st.stop()
-
-    # Tampilkan hasil ADF
-    st.subheader("📋 Hasil Uji ADF")
-    for currency in currencies:
-        if currency in adf_results:
-            adf_stat = adf_results[currency]["adf_stat"]
-            p_value = adf_results[currency]["p_value"]
-
-            st.markdown(f"**{currency}**")
-            st.write(f"• Statistik ADF: `{adf_stat:.6f}`")
-            st.write(f"• P-value: `{p_value:.6f}`")
-            if p_value < 0.05:
-                st.success("➡️ Data stasioner (tolak H₀)")
-            else:
-                st.warning("➡️ Data tidak stasioner (gagal tolak H₀)")
-        else:
-            st.warning(f"Tidak ada hasil ADF untuk {currency}.")
-
-    # Plot ACF & PACF jika data log-return train tersedia
-    st.subheader("📈 Plot ACF & PACF (Log-Return Train)")
-
-    log_return_train = st.session_state.get('log_return_train', None)
-    selected_currency = st.session_state.get('selected_currency', '')
-
-    if log_return_train is not None and not log_return_train.empty:
-        st.write(f"📊 Plot berikut berdasarkan data log-return **train** untuk: `{selected_currency}`")
-    
-        lags = st.slider("Pilih jumlah lags untuk plot:", 5, 50, 20, key="acf_pacf_lags_slider")
-
-        if st.button("Tampilkan Plot ACF & PACF", key="show_acf_pacf_button"):
+            # Load hasil ADF
             try:
-                fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-                plot_acf(log_return_train, lags=lags, alpha=0.05, ax=axes[0])
-                axes[0].set_title(f"ACF {selected_currency} Log-Return (Train)")
-
-                plot_pacf(log_return_train, lags=lags, alpha=0.05, ax=axes[1])
-                axes[1].set_title(f"PACF {selected_currency} Log-Return (Train)")
-
-                fig.suptitle(f"ACF & PACF - {selected_currency} Log-Return (Train)", fontsize=14)
-                plt.tight_layout()
-                st.pyplot(fig)
-
-                st.success("✅ Plot ACF & PACF berhasil ditampilkan.")
+                with open(adf_results_path, "rb") as f:
+                    adf_results = pickle.load(f)
+                st.success("✅ Hasil ADF Test berhasil dimuat.")
             except Exception as e:
-                st.error(f"❌ Gagal membuat plot ACF/PACF: {e}")
-    else:
-        st.warning("📛 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
+                st.error(f"Gagal menampilkan hasil ADF Test: {e}")
+                st.stop()
 
+            # Tampilkan hasil ADF
+            selected_currency = st.session_state.get("selected_currency", "")
+            if selected_currency in adf_results:
+                adf_stat = adf_results[selected_currency]["adf_stat"]
+                p_value = adf_results[selected_currency]["p_value"]
+                
+                st.write(f"**Hasil ADF untuk {selected_currency}:**")
+                st.write(f"• Statistik ADF: `{adf_stat:.6f}`")
+                st.write(f"• P-value: `{p_value:.6f}`")
+                if p_value < 0.05:
+                    st.success("➡️ Data stasioner (tolak H₀)")
+                else:
+                    st.warning("➡️ Data tidak stasioner (gagal tolak H₀)")
+            else:
+                st.warning(f"Tidak ada hasil ADF untuk {selected_currency}.")
+            
+            # === ACF & PACF ===
+            st.markdown("### 📈 Plot ACF & PACF (Data Train)")
+            log_return_train = st.session_state.get("log_return_train", None)
+
+            if log_return_train is not None and not log_return_train.empty:
+                lags = st.slider("Jumlah lags:", 5, 50, 20, key="acf_pacf_lags_slider")
+                if st.button("📊 Tampilkan ACF & PACF", key="show_acf_pacf_button"):
+                    try:
+                        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+                        plot_acf(log_return_train, lags=lags, alpha=0.05, ax=axes[0])
+                        axes[0].set_title(f"ACF {selected_currency} Log-Return (Train)")
+
+                        plot_pacf(log_return_train, lags=lags, alpha=0.05, ax=axes[1])
+                        axes[1].set_title(f"PACF {selected_currency} Log-Return (Train)")
+
+                        fig.suptitle(f"ACF & PACF - {selected_currency} Log-Return", fontsize=14)
+                        plt.tight_layout()
+                        st.pyplot(fig)
+
+                        st.success("✅ Plot ACF & PACF berhasil ditampilkan.")
+                    except Exception as e:
+                        st.error(f"Gagal membuat plot ACF/PACF: {e}")
+            else:
+                st.warning("📛 Data train log-return belum tersedia. Silakan bagi data terlebih dahulu.")
+
+        else:
+            st.warning("Tidak ditemukan kolom numerik dalam file.")
+    else:
+        st.warning("Silakan unggah data terlebih dahulu. 📂")
+   
 
 elif st.session_state['current_page'] == 'ARIMA Model':
     st.markdown('<div class="main-header">MODEL ARIMA 📈</div>', unsafe_allow_html=True)
