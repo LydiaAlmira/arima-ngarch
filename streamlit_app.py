@@ -576,18 +576,20 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
     st.markdown('<div class="main-header">Stasioneritas Data 📊🧪</div>', unsafe_allow_html=True)
-    st.write(f"Untuk pemodelan time series, kita harus memastikan bahwa data log-return untuk {st.session_state.get('selected_currency', '')} sudah stasioner. 🔍")
+    st.write(f"Untuk pemodelan time series, kita harus memastikan bahwa *log-return train* dari {st.session_state.get('selected_currency', '')} sudah stasioner.")
 
-    if 'log_return_series' in st.session_state and st.session_state['log_return_series'] is not None:
-        log_return = st.session_state['log_return_series']
-        st.write("📋 5 Baris Pertama Data Log-Return:")
-        st.dataframe(log_return.head())
+    # Pastikan data train log-return sudah ada
+    if 'log_return_train' in st.session_state and not st.session_state['log_return_train'].empty:
+        log_return_train = st.session_state['log_return_train']
 
-        st.subheader("Uji Stasioneritas ADF pada Log-Return")
+        st.write("📋 5 Baris Pertama Log-Return (Train):")
+        st.dataframe(log_return_train.head())
 
-        if st.button("Jalankan Uji ADF ▶️", key="run_adf_test"):
+        st.subheader("Uji Stasioneritas ADF pada Log-Return (Train Set)")
+
+        if st.button("Jalankan Uji ADF pada Log-Return Train ▶️", key="run_adf_test_train"):
             try:
-                result = adfuller(log_return.dropna())
+                result = adfuller(log_return_train.dropna())
                 stat = result[0]
                 pval = result[1]
 
@@ -595,44 +597,44 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
                 st.write(f"**p-value:** {pval:.6f}")
 
                 if pval < 0.05:
-                    st.success("Data log-return stasioner (tolak H0). ✅")
+                    st.success("Data log-return (train) stasioner (tolak H0). ✅")
                 else:
-                    st.warning("Data log-return tidak stasioner (gagal tolak H0). ⚠️")
+                    st.warning("Data log-return (train) tidak stasioner (gagal tolak H0). ⚠️")
 
                 st.session_state['adf_result'] = result
                 st.session_state['adf_pvalue'] = pval
-                st.session_state['final_series'] = log_return  # log-return tetap dipakai
-                st.session_state['processed_returns'] = log_return
+                st.session_state['final_series'] = log_return_train
+                st.session_state['processed_returns'] = log_return_train
 
             except Exception as e:
                 st.error(f"Gagal menjalankan uji ADF: {e}")
 
-        # Tampilkan Plot ACF & PACF jika stasioner
+        # Jika stasioner, tampilkan ACF/PACF
         if st.session_state.get('adf_pvalue', 1.0) <= 0.05:
             st.subheader("Autocorrelation Function (ACF) dan Partial Autocorrelation Function (PACF) 📈📉")
-            st.info("Plot ACF menunjukkan korelasi antar lag. Plot PACF menunjukkan korelasi parsial setelah efek lag sebelumnya dihilangkan.")
+            st.info("ACF menunjukkan korelasi antar lag. PACF menunjukkan korelasi parsial setelah pengaruh lag sebelumnya dihilangkan.")
 
-            lags = st.slider("Jumlah Lags untuk Plot ACF/PACF:", 5, 50, 20, key="acf_pacf_lags")
+            lags = st.slider("Jumlah Lags:", min_value=5, max_value=50, value=20, key="acf_pacf_lags")
 
-            if st.button("Tampilkan Plot ACF dan PACF 📊", key="show_acf_pacf"):
+            if st.button("Tampilkan Plot ACF & PACF 📊", key="plot_acf_pacf_train"):
                 try:
                     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-                    plot_acf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[0])
-                    axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return")
+                    plot_acf(log_return_train, lags=lags, alpha=0.05, ax=axes[0])
+                    axes[0].set_title(f"ACF {st.session_state.get('selected_currency', '')} Log-Return (Train)")
 
-                    plot_pacf(st.session_state['final_series'], lags=lags, alpha=0.05, ax=axes[1])
-                    axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return")
+                    plot_pacf(log_return_train, lags=lags, alpha=0.05, ax=axes[1])
+                    axes[1].set_title(f"PACF {st.session_state.get('selected_currency', '')} Log-Return (Train)")
 
-                    fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return", fontsize=14)
+                    fig.suptitle(f"ACF & PACF - {st.session_state.get('selected_currency', '')} Log-Return (Train)", fontsize=14)
                     plt.tight_layout()
                     st.pyplot(fig)
 
-                    st.success("Plot ACF dan PACF berhasil ditampilkan! 🎉")
+                    st.success("Plot ACF & PACF berhasil ditampilkan. 🎯")
                 except Exception as e:
-                    st.error(f"Terjadi kesalahan saat membuat plot ACF/PACF: {e} ❌")
+                    st.error(f"Kesalahan saat membuat plot ACF/PACF: {e}")
     else:
-        st.warning("Log-return belum tersedia. Silakan lakukan preprocessing terlebih dahulu.")
+        st.warning("Data log-return (train) belum tersedia. Lakukan pembagian data terlebih dahulu.")
 
 
 elif st.session_state['current_page'] == 'ARIMA Model':
