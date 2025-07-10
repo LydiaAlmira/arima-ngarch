@@ -549,33 +549,32 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
         st.dataframe(log_return_train.head())
 
         st.subheader("Uji Stasioneritas ADF pada Log-Return (Train Set)")
-
-        if st.button("Jalankan Uji ADF pada Log-Return Train ▶️", key="run_adf_test_train"):
+        if st.button("Tampilkan Hasil ADF dari Colab (pkl) ▶️", key="load_adf_pkl"):
             try:
-                result = adfuller(log_return_train)
-                stat = result[0]
-                pval = result[1]
-                critical_values = result[4]
+                import pickle
 
-                st.write(f"**ADF Statistic:** {stat:.6f}")
-                st.write(f"**p-value:** {pval:.6f}")
-                st.write("**Nilai Kritis:**")
-                for key, value in critical_values.items():
-                    st.write(f"  {key}: {value:.4f}")
+                with open("adf_test_results.pkl", "rb") as f:
+                    adf_results = pickle.load(f)
 
-                if p_value < 0.05:
-                    st.success("✅ Data log-return (train) stasioner (tolak H0)")
-                    st.session_state['is_stationary_adf'] = True
+                selected_currency = st.session_state.get('selected_currency', 'IDR')
+
+                if selected_currency in adf_results:
+                    res = adf_results[selected_currency]
+                    st.write(f"**ADF Statistic**: {res['ADF Statistic']:.6f}")
+                    st.write(f"**p-value**: {res['p-value']:.6f}")
+                    st.write("**Stasioner** ✅" if res['is_stationary'] else "**Tidak Stasioner** ❌")
+
+                    # Simpan ke session_state jika ingin lanjut ke plot ACF/PACF
+                    st.session_state['is_stationary_adf'] = res['is_stationary']
                     st.session_state['final_series'] = log_return_train
                     st.session_state['processed_returns'] = log_return_train
                 else:
-                    st.warning("Data log-return (train) tidak stasioner (gagal tolak H0). ⚠️")
-                    st.session_state['is_stationary_adf'] = False
-                
+                    st.warning("Hasil ADF untuk mata uang ini tidak ditemukan di file pkl.")
+
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat menjalankan ADF test: {e}")
-    else:
-        st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
+                st.error(f"Gagal memuat hasil ADF dari file .pkl: {e}")
+        else:
+            st.warning("🚫 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
 
     
         # Jika stasioner, tampilkan ACF/PACF
