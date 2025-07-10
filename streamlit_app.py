@@ -528,8 +528,6 @@ elif st.session_state['current_page'] == 'data_preprocessing':
             st.session_state['full_prices_series'] = series_data  
 
             st.success("Preprocessing selesai!")
-            st.write("Pratinjau data hasil preprocessing:")
-            st.line_chart(series_data)
         else:
             st.warning("Tidak ditemukan kolom numerik untuk diproses. Pastikan file yang diunggah sesuai format.")
     else:
