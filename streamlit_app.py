@@ -578,14 +578,15 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
     # Plot ACF & PACF jika data log-return train tersedia
     st.subheader("📈 Plot ACF & PACF (Log-Return Train)")
 
-    log_return_train = st.session_state.get('train_data_returns', None)
+    log_return_train = st.session_state.get('log_return_train', None)
     selected_currency = st.session_state.get('selected_currency', '')
 
     if log_return_train is not None and not log_return_train.empty:
-        st.write(f"Plot berikut berdasarkan data log-return train untuk: **{selected_currency}**")
-        lags = st.slider("Jumlah lags untuk plot:", 5, 50, 20, key="acf_pacf_lags_slider")
+        st.write(f"📊 Plot berikut berdasarkan data log-return **train** untuk: `{selected_currency}`")
+    
+        lags = st.slider("Pilih jumlah lags untuk plot:", 5, 50, 20, key="acf_pacf_lags_slider")
 
-        if st.button("Tampilkan Plot ACF & PACF"):
+        if st.button("Tampilkan Plot ACF & PACF", key="show_acf_pacf_button"):
             try:
                 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
@@ -601,7 +602,7 @@ elif st.session_state['current_page'] == 'stasioneritas_data':
 
                 st.success("✅ Plot ACF & PACF berhasil ditampilkan.")
             except Exception as e:
-                st.error(f"Gagal membuat plot ACF/PACF: {e}")
+                st.error(f"❌ Gagal membuat plot ACF/PACF: {e}")
     else:
         st.warning("📛 Data log-return (train) belum tersedia. Silakan lakukan pembagian data terlebih dahulu.")
 
