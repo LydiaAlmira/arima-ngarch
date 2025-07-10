@@ -503,8 +503,19 @@ elif st.session_state['current_page'] == 'data_preprocessing':
                         st.session_state['log_return_original'] = log_return_series.copy()
 
                     st.success("Log-return berhasil dihitung dan disimpan di sesi. ✅")
-                    st.write("Pratinjau log-return:")
+                    st.write("📉 Grafik Log-Return:")
                     st.line_chart(log_return_series)
+
+                    # Gabungkan dengan data aslinya (jika ingin preview berdampingan)
+                    log_return_df = pd.concat([series_data, log_return_series], axis=1)
+                    log_return_df.columns = ['Value', 'Log-Return']
+
+                    st.write("🧾 Tabel Data dan Log-Return (5 data pertama):")
+                    st.dataframe(log_return_df.dropna().head())
+
+                    # Simpan ke session untuk digunakan di halaman lain
+                    st.session_state['log_return_df'] = log_return_df
+
                 except Exception as e:
                     st.error(f"Gagal menghitung log-return: {e}")
                     st.session_state['log_return_series'] = None
